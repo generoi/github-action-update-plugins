@@ -1,0 +1,94 @@
+name: Gravityforms
+on:
+  workflow_call:
+    inputs:
+      slug:
+        required: false
+        default: 'gravityforms'
+        type: string
+    secrets:
+      LICENSE_KEY:
+        required: true
+
+jobs:
+  build:
+    name: Update plugin
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+
+      - name: Install requirement
+        run: sudo apt-get install -y libarchive-tools
+
+      - name: Retrieve the license information
+        run: |
+          {
+            echo 'GRAVITYAPI_JSON<<EOF'
+            php -r '
+              echo json_encode(
+                unserialize(
+                  file_get_contents(
+                    "https://gravityapi.com/wp-content/plugins/gravitymanager/api.php?op=get_plugin&slug=${{ inputs.slug }}&key=${{ secrets.LICENSE_KEY }}"
+                  )
+                )
+              );
+            '
+            echo -e "\n"
+            echo 'EOF'
+          } >> "$GITHUB_ENV"
+
+      - name: Store EDD license information
+        run: |
+          echo "DOWNLOAD_URL=${{ fromJson(env.GRAVITYAPI_JSON).download_url_latest }}" >> "$GITHUB_ENV"
+          echo "LATEST_VERSION=${{ fromJson(env.GRAVITYAPI_JSON).version_latest }}" >> "$GITHUB_ENV"
+
+      - name: Check if latest version exists
+        run: |
+          if git show-ref --tags --verify --quiet "refs/tags/${{ env.LATEST_VERSION }}"; then
+            echo "RUN_BUILD=false" >> "$GITHUB_ENV"
+          else
+            echo "RUN_BUILD=true" >> "$GITHUB_ENV"
+          fi
+
+      - name: Download and extract the package
+        if: env.RUN_BUILD == 'true'
+        run: |
+          git rm -rf .
+          git clean -fxd
+          git reset HEAD composer.json .github
+          git checkout -- composer.json .github
+          curl "${{ env.DOWNLOAD_URL }}" > package.zip
+          bsdtar --strip-components=1 -xvf package.zip
+          rm package.zip
+          git add .
+
+      - name: Retrieve changelog
+        if: env.RUN_BUILD == 'true'
+        run: |
+          {
+            echo 'CHANGELOG<<EOF'
+            awk -v ver=${{ env.LATEST_VERSION }} '/^### / { if (p) { exit }; if ($2 == ver) { p=1; next } } p && NF' change_log.txt 2>&1
+            echo 'EOF'
+          } >> "$GITHUB_ENV"
+
+      - name: Commit the changes and push them
+        if: env.RUN_BUILD == 'true'
+        run: |
+          git config --global user.name "${GITHUB_ACTOR}"
+          git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+          git add .
+          git commit -m "v${{ env.LATEST_VERSION }}" -m "${{ env.CHANGELOG }}"
+          git tag --annotate ${{ env.LATEST_VERSION }} -m "v${{ env.LATEST_VERSION }}" -m "${{ env.CHANGELOG }}"
+          git push
+          git push origin tag ${{ env.LATEST_VERSION }}
+
+      # Release workflow not triggered from other workflows
+      - name: Publish release
+        uses: ghalactic/github-release-from-tag@v5
+
