@@ -1,0 +1,32 @@
+name: Advanced Custom Fields PRO
+on:
+  workflow_call:
+    secrets:
+      LICENSE_KEY:
+        required: true
+
+jobs:
+  build:
+    name: Update plugin
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Retrieve the package information
+        run: |
+          {
+            echo 'LATEST_VERSION<<EOF'
+            curl -s -X GET 'https://connect.advancedcustomfields.com/packages.json' | jq -r '.packages."wpengine/advanced-custom-fields-pro" | keys_unsorted [0]'
+            echo 'EOF'
+          } >> "$GITHUB_ENV"
+
+
+      - name: Update repo
+        uses: generoi/github-action-update-plugins@master
+        with:
+          download_url: "https://connect.advancedcustomfields.com/v2/plugins/download?p=pro&k=${{ secrets.LICENSE_KEY }}"
+          version: ${{ env.LATEST_VERSION }}
+          changelog: ${{ env.CHANGELOG }}
