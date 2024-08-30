@@ -13,6 +13,9 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    - name: Fetch tags
+      run: git fetch --prune --unshallow --tags
+
     - name: Check if latest version exists
       shell: bash
       run: |
