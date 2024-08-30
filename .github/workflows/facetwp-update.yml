@@ -58,7 +58,7 @@ jobs:
           rm changelog.html changelog.md
 
       - name: Update repo
-        uses: ./.github/actions/update
+        uses: generoi/github-action-update-plugins@master
         with:
           download_url: ${{ fromJson(env.REMOTE_RESPONSE).package }}
           version: ${{ fromJson(env.REMOTE_RESPONSE).version }}

@@ -14,6 +14,7 @@ runs:
   using: 'composite'
   steps:
     - name: Fetch tags
+      shell: bash
       run: git fetch --prune --unshallow --tags
 
     - name: Check if latest version exists
@@ -27,6 +28,7 @@ runs:
 
     - name: Download and extract the package
       if: env.RUN_BUILD == 'true'
+      shell: bash
       run: |
         git rm -rf .
         git clean -fxd
@@ -39,6 +41,7 @@ runs:
 
     - name: Extract changelog
       if: ${{ env.RUN_BUILD == 'true' && inputs.changelog_extract != '' && inputs.changelog == '' }}
+      shell: bash
       run: |
         {
           echo 'CHANGELOG<<EOF'
@@ -48,6 +51,7 @@ runs:
 
     - name: Retrieve changelog
       if: ${{ env.RUN_BUILD == 'true' && inputs.changelog != '' }}
+      shell: bash
       run: |
         {
           echo 'CHANGELOG<<EOF'
@@ -57,6 +61,7 @@ runs:
 
     - name: Commit the changes and push them
       if: ${{ env.RUN_BUILD == 'true' }}
+      shell: bash
       run: |
         git config --global user.name "${GITHUB_ACTOR}"
         git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
@@ -68,4 +73,5 @@ runs:
 
     # Release workflow not triggered from other workflows
     - name: Publish release
+      if: ${{ env.RUN_BUILD == 'true' }}
       uses: ghalactic/github-release-from-tag@v5

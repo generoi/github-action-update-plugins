@@ -44,7 +44,7 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: Update repo
-        uses: ./.github/actions/update
+        uses: generoi/github-action-update-plugins@master
         with:
           download_url: ${{ fromJson(env.REMOTE_RESPONSE).download_url_latest }}
           version: ${{ fromJson(env.REMOTE_RESPONSE).version_latest }}
