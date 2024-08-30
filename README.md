@@ -56,7 +56,7 @@ jobs:
 
 ### EDD / Polylang WC
 
-```yyml
+```yml
 name: Build
 on:
   workflow_dispatch:
