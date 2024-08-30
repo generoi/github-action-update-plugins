@@ -29,6 +29,9 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+
       # See https://easydigitaldownloads.com/docs/software-licensing-api/
       - name: Retrieve the license information (POST)
         if: ${{ inputs.method == 'POST' }}
@@ -52,15 +55,41 @@ jobs:
               --data-urlencode "license=${{ secrets.LICENSE_KEY }}" \
               --data-urlencode "item_name=${{ inputs.slug }}" \
               --data-urlencode "url=${{ inputs.source_url }}" \
-              "${{ inputs.endpoint_url }}""
+              "${{ inputs.endpoint_url }}"
             echo -e "\n"
             echo 'EOF'
           } >> "$GITHUB_ENV"
+
+      - name: Read changelog
+        run: |
+          {
+            php -r '
+              $json = json_decode(getenv("REMOTE_RESPONSE") ?: "");
+              echo @unserialize($json->sections ?? "");
+            '
+          } > changelog.html
+
+      - name: Convert changelog to markdown
+        uses: docker://pandoc/core:2.9
+        with:
+          args: >-
+            --from=html
+            --to=markdown
+            --output=changelog.md
+            changelog.html
+
+      - name: Read changelog into environment variable
+        run: |
+          {
+            echo 'CHANGELOG<<EOF'
+            awk -v ver=${{ fromJson(env.REMOTE_RESPONSE).new_version }} '/^#### / { if (p) { exit }; if ($2 == ver) { p=1; next } } p && NF' changelog.md 2>&1
+            echo 'EOF'
+          } >> "$GITHUB_ENV"
+          rm changelog.html changelog.md
 
       - name: Update repo
         uses: generoi/github-action-update-plugins@master
         with:
           download_url: ${{ fromJson(env.REMOTE_RESPONSE).download_link }}
           version: ${{ fromJson(env.REMOTE_RESPONSE).new_version }}
-          changelog_extract: |
-            awk -v ver=${{ fromJson(env.REMOTE_RESPONSE).new_version }} '/^= / { if (p) { exit }; if ($2 == ver) { p=1; next } } p && NF' readme.txt 2>&1
+          changelog: ${{ env.CHANGELOG }}
