@@ -9,8 +9,12 @@ on:
         required: true
         type: string
       endpoint_url:
-        required:  true
+        required: true
         type: string
+      method:
+        required: false
+        type: string
+        default: 'POST'
     secrets:
       LICENSE_KEY:
         required: true
@@ -26,11 +30,29 @@ jobs:
         uses: actions/checkout@v4
 
       # See https://easydigitaldownloads.com/docs/software-licensing-api/
-      - name: Retrieve the license information
+      - name: Retrieve the license information (POST)
+        if: ${{ inputs.method == 'POST' }}
         run: |
           {
             echo 'REMOTE_RESPONSE<<EOF'
             curl -s -d "edd_action=get_version&license=${{ secrets.LICENSE_KEY }}&item_name=${{ inputs.slug }}&url=${{ inputs.source_url }}" ${{ inputs.endpoint_url }}
+            echo -e "\n"
+            echo 'EOF'
+          } >> "$GITHUB_ENV"
+
+      # See https://easydigitaldownloads.com/docs/software-licensing-api/
+      - name: Retrieve the license information (GET)
+        if: ${{ inputs.method == 'GET' }}
+        run: |
+          {
+            echo 'REMOTE_RESPONSE<<EOF'
+            curl -s \
+              --get \
+              --data-urlencode "edd_action=get_version" \
+              --data-urlencode "license=${{ secrets.LICENSE_KEY }}" \
+              --data-urlencode "item_name=${{ inputs.slug }}" \
+              --data-urlencode "url=${{ inputs.source_url }}" \
+              "${{ inputs.endpoint_url }}""
             echo -e "\n"
             echo 'EOF'
           } >> "$GITHUB_ENV"
