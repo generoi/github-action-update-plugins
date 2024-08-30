@@ -1,0 +1,34 @@
+name: 'WooCommerce.com Package'
+
+inputs:
+  access_token:
+    required: true
+  access_token_secret:
+    required: true
+  slug:
+    required: false
+outputs:
+  package:
+    description: "Package JSON"
+    value: ${{ steps.wccom-package.outputs.REMOTE_RESPONSE }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+
+    - name: Get package
+      id: wccom-package
+      shell: bash
+      run: |
+        {
+          echo 'REMOTE_RESPONSE<<EOF'
+          php $GITHUB_ACTION_PATH/../../scripts/wccom-get-package.php
+          echo -e "\n"
+          echo 'EOF'
+        } >> "$GITHUB_OUTPUT"
+      env:
+        ACCESS_TOKEN: ${{ inputs.access_token }}
+        ACCESS_TOKEN_SECRET: ${{ inputs.access_token_secret }}
+        PRODUCT_SLUG: ${{ inputs.slug }}
+

@@ -4,7 +4,7 @@
  * @see https://github.com/pronamic/woocommerce-subscriptions/tree/main/.github/scripts
  */
 
-$productSlug = getenv('PRODUCT_SLUG') ?: 'role-based-pricing-for-woocommerce';
+$productSlug = getenv('PRODUCT_SLUG');
 
 function doRequest(string $endpoint, string $method = 'GET', string $body = null) {
   $accessToken = getenv('ACCESS_TOKEN');

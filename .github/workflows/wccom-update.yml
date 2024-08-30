@@ -24,27 +24,17 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-
       - name: Get package
-        run: |
-          curl https://raw.githubusercontent.com/generoi/github-action-update-plugins/master/.github/scripts/wccom-get-package.php > wccom-get-package.php
-          {
-            echo 'REMOTE_RESPONSE<<EOF'
-            php wccom-get-package.php
-            echo -e "\n"
-            echo 'EOF'
-          } >> "$GITHUB_ENV"
-          rm wccom-get-package.php
-        env:
-          ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
-          ACCESS_TOKEN_SECRET: ${{ secrets.ACCESS_TOKEN_SECRET }}
-          PRODUCT_SLUG: ${{ inputs.slug }}
+        uses: generoi/github-action-update-plugins/.github/actions/wccom-package@master
+        id: wccom-package
+        with:
+          access_token: ${{ secrets.ACCESS_TOKEN }}
+          access_token_secret: ${{ secrets.ACCESS_TOKEN_SECRET }}
+          slug: ${{ inputs.slug }}
 
       - name: Update repo
         uses: generoi/github-action-update-plugins@master
         with:
-          download_url: ${{ fromJson(env.REMOTE_RESPONSE).package }}
-          version: ${{ fromJson(env.REMOTE_RESPONSE).version }}
-          changelog_extract: awk -v ver=${{ fromJson(env.REMOTE_RESPONSE).version }} ${{ inputs.changelog_extract }}
+          download_url: ${{ fromJson(steps.wccom-package.outputs.package).package }}
+          version: ${{ fromJson(steps.wccom-package.outputs.package).version }}
+          changelog_extract: awk -v ver=${{ fromJson(steps.wccom-package.outputs.package).version }} ${{ inputs.changelog_extract }}
