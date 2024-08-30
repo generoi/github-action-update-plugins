@@ -107,3 +107,21 @@ jobs:
       source_url: 'https://example.com'
       endpoint_url: 'https://update.wpallimport.com/check_version'
 ```
+
+### WooCommerce Subscriptions
+
+```yml
+name: Build
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '5 4 * * *'
+jobs:
+  build:
+    uses: generoi/github-action-update-plugins/.github/workflows/wccom-update.yml@master
+    secrets:
+      ACCESS_TOKEN: ${{ secrets.WCCOM_ACCESS_TOKEN }}
+      ACCESS_TOKEN_SECRET: ${{ secrets.WCCOM_ACCESS_TOKEN_SECRET }}
+    with:
+      slug: 'woocommerce-subscriptions'
+```
