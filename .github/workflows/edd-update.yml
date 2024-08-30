@@ -2,11 +2,11 @@ name: EDD
 on:
   workflow_call:
     inputs:
+      slug:
+        required:  true
+        type: string
       source_url:
         required: true
-        type: string
-      item_name:
-        required:  true
         type: string
       endpoint_url:
         required:  true
@@ -32,58 +32,16 @@ jobs:
       - name: Retrieve the license information
         run: |
           {
-            echo 'EDD_RESPONSE<<EOF'
-            curl -s -d "edd_action=get_version&license=${{ secrets.LICENSE_KEY }}&item_name=${{ inputs.item_name }}&url=${{ inputs.source_url }}" ${{ inputs.endpoint_url }}
+            echo 'REMOTE_RESPONSE<<EOF'
+            curl -s -d "edd_action=get_version&license=${{ secrets.LICENSE_KEY }}&item_name=${{ inputs.slug }}&url=${{ inputs.source_url }}" ${{ inputs.endpoint_url }}
             echo -e "\n"
             echo 'EOF'
           } >> "$GITHUB_ENV"
 
-      - name: Store EDD license information
-        run: |
-          echo "DOWNLOAD_LINK=${{ fromJson(env.EDD_RESPONSE).download_link }}" >> "$GITHUB_ENV"
-          echo "NEW_VERSION=${{ fromJson(env.EDD_RESPONSE).new_version }}" >> "$GITHUB_ENV"
-
-      - name: Check if latest version exists
-        run: |
-          if git show-ref --tags --verify --quiet "refs/tags/${{ env.NEW_VERSION }}"; then
-            echo "RUN_BUILD=false" >> "$GITHUB_ENV"
-          else
-            echo "RUN_BUILD=true" >> "$GITHUB_ENV"
-          fi
-
-      - name: Download and extract the package
-        if: env.RUN_BUILD == 'true'
-        run: |
-          git rm -rf .
-          git clean -fxd
-          git reset HEAD composer.json .github
-          git checkout -- composer.json .github
-          curl ${{ env.DOWNLOAD_LINK }} > package.zip
-          bsdtar --strip-components=1 -xvf package.zip
-          rm package.zip
-          git add .
-
-      - name: Retrieve changelog
-        if: env.RUN_BUILD == 'true'
-        run: |
-          {
-            echo 'CHANGELOG<<EOF'
-            awk -v ver=${{ env.NEW_VERSION }} '/^= / { if (p) { exit }; if ($2 == ver) { p=1; next } } p && NF' readme.txt 2>&1
-            echo 'EOF'
-          } >> "$GITHUB_ENV"
-
-      - name: Commit the changes and push them
-        if: env.RUN_BUILD == 'true'
-        run: |
-          git config --global user.name "${GITHUB_ACTOR}"
-          git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
-          git add .
-          git commit -m "v${{ env.NEW_VERSION }}" -m "${{ env.CHANGELOG }}"
-          git tag --annotate ${{ env.NEW_VERSION }} -m "v${{ env.NEW_VERSION }}" -m "${{ env.CHANGELOG }}"
-          git push
-          git push origin tag ${{ env.NEW_VERSION }}
-
-      # Release workflow not triggered from other workflows
-      - name: Publish release
-        uses: ghalactic/github-release-from-tag@v5
-
+      - name: Update repo
+        uses: ./.github/actions/update
+        with:
+          download_url: ${{ fromJson(env.REMOTE_RESPONSE).download_link }}
+          version: ${{ fromJson(env.REMOTE_RESPONSE).new_version }}
+          changelog_extract: |
+            awk -v ver=${{ fromJson(env.REMOTE_RESPONSE).new_version }} '/^= / { if (p) { exit }; if ($2 == ver) { p=1; next } } p && NF' 2>&1

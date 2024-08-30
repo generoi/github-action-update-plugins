@@ -1,0 +1,68 @@
+name: 'Update'
+
+inputs:
+  version:
+    required: true
+  download_url:
+    required: true
+  changelog:
+    required: false
+  changelog_extract:
+    required: false
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Check if latest version exists
+      shell: bash
+      run: |
+        if git show-ref --tags --verify --quiet "refs/tags/${{ inputs.version }}"; then
+          echo "RUN_BUILD=false" >> "$GITHUB_ENV"
+        else
+          echo "RUN_BUILD=true" >> "$GITHUB_ENV"
+        fi
+
+    - name: Download and extract the package
+      if: env.RUN_BUILD == 'true'
+      run: |
+        git rm -rf .
+        git clean -fxd
+        git reset HEAD composer.json .github
+        git checkout -- composer.json .github
+        curl ${{ inputs.download_url }} > package.zip
+        bsdtar --strip-components=1 -xvf package.zip
+        rm package.zip
+        git add .
+
+    - name: Extract changelog
+      if: ${{ env.RUN_BUILD == 'true' && inputs.changelog_extract != '' && inputs.changelog == '' }}
+      run: |
+        {
+          echo 'CHANGELOG<<EOF'
+          awk -v ver=${{ inputs.version }} ${{ inputs.changelog_pattern}} ${{ inputs.changelog}} 2>&1
+          echo 'EOF'
+        } >> "$GITHUB_ENV"
+
+    - name: Retrieve changelog
+      if: ${{ env.RUN_BUILD == 'true' && inputs.changelog != '' }}
+      run: |
+        {
+          echo 'CHANGELOG<<EOF'
+          echo "${{ inputs.changelog }}"
+          echo 'EOF'
+        } >> "$GITHUB_ENV"
+
+    - name: Commit the changes and push them
+      if: ${{ env.RUN_BUILD == 'true' }}
+      run: |
+        git config --global user.name "${GITHUB_ACTOR}"
+        git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+        git add .
+        git commit -m "v${{ inputs.version }}" -m "${{ env.CHANGELOG }}inputs.version "
+        git tag --annotate ${{ inputs.version }} -m "v${{ inputs.version }}" -m "${{ env.CHANGELOG }}"
+        git push
+        git push origin tag ${{ inputs.version }}
+
+    # Release workflow not triggered from other workflows
+    - name: Publish release
+      uses: ghalactic/github-release-from-tag@v5

@@ -1,0 +1,65 @@
+name: FacetWP
+on:
+  workflow_call:
+    inputs:
+      slug:
+        required:  false
+        default: 'facetwp'
+        type: string
+      host:
+        required: true
+        type: string
+    secrets:
+      LICENSE_KEY:
+        required: true
+
+jobs:
+  build:
+    name: Update plugin
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install requirement
+        run: sudo apt-get install -y libarchive-tools
+
+      - name: Retrieve the license information
+        run: |
+          {
+            echo 'REMOTE_RESPONSE<<EOF'
+            curl -s -d "action=check_plugins&license=${{ secrets.LICENSE_KEY }}&slugs=${{ inputs.slug }}&host=${{ inputs.host }}" "https://api.facetwp.com" | jq .slugs.${{ inputs.slug }}
+            echo -e "\n"
+            echo 'EOF'
+          } >> "$GITHUB_ENV"
+
+      - name: Store changelog HTML as a file
+        run: |
+          echo "${{ fromJson(env.REMOTE_RESPONSE).sections.changelog }}" > changelog.html
+
+      - name: Convert changelog to markdown
+        uses: docker://pandoc/core:2.9
+        with:
+          args: >-
+            --form=html
+            --to=markdown
+            --output=changelog.md
+            changelog.html
+
+      - name: Read changelog into environment variable
+        run: |
+          {
+            echo 'CHANGELOG<<EOF'
+            awk -v ver=${{ fromJson(env.REMOTE_RESPONSE).version }} '/^#### / { if (p) { exit }; if ($2 == ver) { p=1; next } } p && NF' changelog.md 2>&1
+            echo 'EOF'
+          } >> "$GITHUB_ENV"
+          rm changelog.html changelog.md
+
+      - name: Update repo
+        uses: ./.github/actions/update
+        with:
+          download_url: ${{ fromJson(env.REMOTE_RESPONSE).package }}
+          version: ${{ fromJson(env.REMOTE_RESPONSE).version }}
+          changelog: ${{ env.CHANGELOG }}
