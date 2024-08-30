@@ -43,7 +43,7 @@ jobs:
         uses: docker://pandoc/core:2.9
         with:
           args: >-
-            --form=html
+            --from=html
             --to=markdown
             --output=changelog.md
             changelog.html
