@@ -87,3 +87,23 @@ jobs:
     secrets:
       LICENSE_KEY: ${{ secrets.LICENSE_KEY }}
 ```
+
+### WP All Import
+
+```yml
+name: Build
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '5 4 * * *'
+jobs:
+  build:
+    uses: generoi/github-action-update-plugins/.github/workflows/edd-update.yml@master
+    secrets:
+      LICENSE_KEY: ${{ secrets.LICENSE_KEY }}
+    with:
+      method: 'GET'
+      slug: 'WP All Import'
+      source_url: 'https://example.com'
+      endpoint_url: 'https://update.wpallimport.com/check_version'
+```
