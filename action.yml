@@ -50,6 +50,7 @@ runs:
         {
           echo 'CHANGELOG<<EOF'
           ${{ inputs.changelog_extract }}
+          echo -e "\n"
           echo 'EOF'
         } >> "$GITHUB_ENV"
 
