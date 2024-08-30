@@ -25,9 +25,6 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install requirement
-        run: sudo apt-get install -y libarchive-tools
-
       # See https://easydigitaldownloads.com/docs/software-licensing-api/
       - name: Retrieve the license information
         run: |

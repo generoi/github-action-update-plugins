@@ -23,9 +23,6 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
 
-      - name: Install requirement
-        run: sudo apt-get install -y libarchive-tools
-
       - name: Retrieve the license information
         run: |
           {
