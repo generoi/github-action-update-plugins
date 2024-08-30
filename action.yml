@@ -38,7 +38,7 @@ runs:
         git clean -fxd
         git reset HEAD composer.json .github
         git checkout -- composer.json .github
-        curl ${{ inputs.download_url }} > package.zip
+        curl "${{ inputs.download_url }}" > package.zip
         bsdtar --strip-components=1 -xvf package.zip
         rm package.zip
         git add .
