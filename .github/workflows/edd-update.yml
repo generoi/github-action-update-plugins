@@ -65,7 +65,7 @@ jobs:
           {
             php -r '
               $json = json_decode(getenv("REMOTE_RESPONSE") ?: "");
-              echo @unserialize($json->sections ?? "");
+              echo @unserialize($json->sections ?? "")["changelog"] ?? "";
             '
           } > changelog.html
 
