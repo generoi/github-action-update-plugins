@@ -41,4 +41,4 @@ jobs:
           download_url: ${{ fromJson(env.REMOTE_RESPONSE).download_link }}
           version: ${{ fromJson(env.REMOTE_RESPONSE).new_version }}
           changelog_extract: |
-            awk -v ver=${{ fromJson(env.REMOTE_RESPONSE).new_version }} '/^= / { if (p) { exit }; if ($2 == ver) { p=1; next } } p && NF' 2>&1
+            awk -v ver=${{ fromJson(env.REMOTE_RESPONSE).new_version }} '/^= / { if (p) { exit }; if ($2 == ver) { p=1; next } } p && NF' readme.txt 2>&1
