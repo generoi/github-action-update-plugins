@@ -8,6 +8,13 @@ on:
       changelog_extract:
         required: false
         type: string
+    outputs:
+      updated:
+        description: "If the update didnt exist and was built"
+        value: ${{ jobs.build.outputs.updated }}
+      version:
+        description: "The updated version"
+        value: ${{ jobs.build.outputs.version }}
     secrets:
       ACCESS_TOKEN:
         required: true
@@ -20,6 +27,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      updated: ${{ steps.update.outputs.updated }}
+      version: ${{ steps.update.outputs.version }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -34,6 +44,7 @@ jobs:
 
       - name: Update repo
         uses: generoi/github-action-update-plugins@master
+        id: update
         with:
           download_url: ${{ fromJson(steps.wccom-package.outputs.package).package }}
           version: ${{ fromJson(steps.wccom-package.outputs.package).version }}

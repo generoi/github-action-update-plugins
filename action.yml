@@ -10,6 +10,14 @@ inputs:
   changelog_extract:
     required: false
 
+outputs:
+  updated:
+    description: Whether the update was needed and completed or not
+    value: ${{ steps.completed-job.outputs.updated }}
+  version:
+    description: The version
+    value: ${{ steps.completed-job.outputs.version }}
+
 runs:
   using: 'composite'
   steps:
@@ -80,3 +88,10 @@ runs:
     - name: Publish release
       if: ${{ env.RUN_BUILD == 'true' }}
       uses: ghalactic/github-release-from-tag@v5
+
+    - name: Set output status
+      id: completed-job
+      shell: bash
+      run: |
+        echo "updated=${{ env.RUN_BUILD }}" >> $GITHUB_OUTPUT
+        echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT

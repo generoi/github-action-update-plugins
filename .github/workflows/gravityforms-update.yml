@@ -6,6 +6,13 @@ on:
         required: false
         default: 'gravityforms'
         type: string
+    outputs:
+      updated:
+        description: "If the update didnt exist and was built"
+        value: ${{ jobs.build.outputs.updated }}
+      version:
+        description: "The updated version"
+        value: ${{ jobs.build.outputs.version }}
     secrets:
       LICENSE_KEY:
         required: true
@@ -16,6 +23,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      updated: ${{ steps.update.outputs.updated }}
+      version: ${{ steps.update.outputs.version }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -42,6 +52,7 @@ jobs:
 
       - name: Update repo
         uses: generoi/github-action-update-plugins@master
+        id: update
         with:
           download_url: ${{ fromJson(env.REMOTE_RESPONSE).download_url_latest }}
           version: ${{ fromJson(env.REMOTE_RESPONSE).version_latest }}

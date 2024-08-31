@@ -1,6 +1,13 @@
 name: Advanced Custom Fields PRO
 on:
   workflow_call:
+    outputs:
+      updated:
+        description: "If the update didnt exist and was built"
+        value: ${{ jobs.build.outputs.updated }}
+      version:
+        description: "The updated version"
+        value: ${{ jobs.build.outputs.version }}
     secrets:
       LICENSE_KEY:
         required: true
@@ -11,6 +18,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      updated: ${{ steps.update.outputs.updated }}
+      version: ${{ steps.update.outputs.version }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -23,9 +33,9 @@ jobs:
             echo 'EOF'
           } >> "$GITHUB_ENV"
 
-
       - name: Update repo
         uses: generoi/github-action-update-plugins@master
+        id: update
         with:
           download_url: "https://connect.advancedcustomfields.com/v2/plugins/download?p=pro&k=${{ secrets.LICENSE_KEY }}"
           version: ${{ env.LATEST_VERSION }}
