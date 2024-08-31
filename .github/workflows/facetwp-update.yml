@@ -37,7 +37,7 @@ jobs:
         run: |
           {
             echo 'REMOTE_RESPONSE<<EOF'
-            curl -s -d "action=check_plugins&license=${{ secrets.LICENSE_KEY }}&slugs=${{ inputs.slug }}&host=${{ inputs.host }}" "https://api.facetwp.com" | jq .slugs.${{ inputs.slug }}
+            curl -s -d "action=check_plugins&license=${{ secrets.LICENSE_KEY }}&slugs=${{ inputs.slug }}&host=${{ inputs.host }}" "https://api.facetwp.com" | jq '.slugs["${{ inputs.slug }}"]'
             echo -e "\n"
             echo 'EOF'
           } >> "$GITHUB_ENV"
