@@ -9,6 +9,10 @@ inputs:
     required: false
   changelog_extract:
     required: false
+  strip_archive_folder:
+    description: "Remove the parent folder of the downloaded archive (defaults to true)"
+    default: 'true'
+    required: false
 
 outputs:
   updated:
@@ -45,7 +49,7 @@ runs:
         git rm -rf .
         git clean -fxd
         curl "${{ inputs.download_url }}" > package.zip
-        bsdtar --strip-components=1 -xvf package.zip
+        bsdtar --strip-components=${{ inputs.strip_archive_folder == 'true' && 1 || 0 }} -xvf package.zip
         rm package.zip
         git reset HEAD composer.json .github
         git checkout -- composer.json .github
