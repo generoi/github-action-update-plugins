@@ -25,10 +25,6 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    - name: Install requirements
-      shell: bash
-      run: sudo apt-get install -y libarchive-tools
-
     - name: Fetch tags
       shell: bash
       run: git fetch --prune --unshallow --tags
@@ -41,6 +37,11 @@ runs:
         else
           echo "RUN_BUILD=true" >> "$GITHUB_ENV"
         fi
+
+    - name: Install requirements
+      if: env.RUN_BUILD == 'true'
+      shell: bash
+      run: sudo apt-get install -y libarchive-tools
 
     - name: Download and extract the package
       if: env.RUN_BUILD == 'true'
