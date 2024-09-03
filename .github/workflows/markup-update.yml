@@ -1,0 +1,56 @@
+name: Gravityforms
+on:
+  workflow_call:
+    inputs:
+      slug:
+        required: true
+        type: string
+      source_url:
+        required: false
+        default: ''
+        type: string
+    outputs:
+      updated:
+        description: "If the update didnt exist and was built"
+        value: ${{ jobs.build.outputs.updated }}
+      version:
+        description: "The updated version"
+        value: ${{ jobs.build.outputs.version }}
+    secrets:
+      LICENSE_KEY:
+        required: false
+
+jobs:
+  build:
+    name: Update plugin
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      updated: ${{ steps.update.outputs.updated }}
+      version: ${{ steps.update.outputs.version }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Retrieve the license information
+        if:
+        run: |
+          {
+            echo 'REMOTE_RESPONSE<<EOF'
+            curl --get \
+              -d "${{ secrets.LICENSE_KEY && format('license_key={0}', secrets.LICENSE_KEY) || '' }}" \
+              -d "${{ inputs.source_url && format('site={0}', inputs.source_url) || '' }}" \
+              'https://markup.fi/products/${{ inputs.slug }}/metadata.json'
+            echo -e "\n"
+            echo 'EOF'
+          } >> "$GITHUB_ENV"
+
+      - name: Update repo
+        uses: generoi/github-action-update-plugins@master
+        id: update
+        with:
+          download_url: ${{ fromJson(env.REMOTE_RESPONSE).download_url }}
+          version: ${{ fromJson(env.REMOTE_RESPONSE).version }}
+          changelog_extract: |
+            awk -v ver=${{ fromJson(env.REMOTE_RESPONSE).version }} '/[0-9\.]+ \(.*\)/ { if (p) { exit }; if ($1 == ver) { p=1; next } } p && NF' CHANGELOG.txt
