@@ -4,7 +4,9 @@ inputs:
   version:
     required: true
   download_url:
-    required: true
+    required: false
+  download_path:
+    required: false
   changelog:
     required: false
   changelog_extract:
@@ -49,7 +51,16 @@ runs:
       run: |
         git rm -rf .
         git clean -fxd
-        curl "${{ inputs.download_url }}" > package.zip
+
+        if [ ! -z "${{ inputs.download_url }}" ]; then
+          curl "${{ inputs.download_url }}" > package.zip
+        elif [ ! -z "${{ inputs.download_path }}" ]; then
+          mv "${{ inputs.download_path }}" package.zip
+        else
+          echo "Missing package/download_url input"
+          exit 1
+        fi
+
         bsdtar --strip-components=${{ inputs.strip_archive_folder == 'true' && 1 || 0 }} -xvf package.zip
         rm package.zip
         git reset HEAD composer.json .github
