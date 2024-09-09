@@ -1,0 +1,76 @@
+name: WPML
+on:
+  workflow_call:
+    inputs:
+      slug:
+        required: false
+        default: "sitepress-multilingual-cms"
+        type: string
+      changelog_extract:
+        default: "'/^#### / { if (p) { exit }; if ($2 == ver) { p=1; next } } p && NF'"
+        type: string
+    outputs:
+      updated:
+        description: "If the update didnt exist and was built"
+        value: ${{ jobs.build.outputs.updated }}
+      version:
+        description: "The updated version"
+        value: ${{ jobs.build.outputs.version }}
+    secrets:
+      USER_ID:
+        required: true
+      LICENSE_KEY:
+        required: true
+
+jobs:
+  build:
+    name: Update plugin
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      updated: ${{ steps.update.outputs.updated }}
+      version: ${{ steps.update.outputs.version }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Retrieve the package information
+        run: |
+          {
+            echo 'REMOTE_RESPONSE<<EOF'
+            curl -s -X GET 'http://d2salfytceyqoe.cloudfront.net/wpml33-products.json' | jq '.downloads.plugins."${{ inputs.slug }}"'
+            echo 'EOF'
+          } >> "$GITHUB_ENV"
+
+      - name: Store changelog HTML as a file
+        run: |
+          {
+            curl -s -X GET 'http://d2salfytceyqoe.cloudfront.net/wpml33-products.json' | jq -r '.downloads.plugins."${{ inputs.slug }}".changelog'
+          } > changelog.html
+
+      - name: Convert changelog to markdown
+        uses: docker://pandoc/core:2.9
+        with:
+          args: >-
+            --from=html
+            --to=markdown
+            --output=changelog.md
+            changelog.html
+
+      - name: Read changelog into environment variable
+        run: |
+          {
+            echo 'CHANGELOG<<EOF'
+            awk -v ver=${{ fromJson(env.REMOTE_RESPONSE).version }} ${{ inputs.changelog_extract }} changelog.md 2>&1
+            echo 'EOF'
+          } >> "$GITHUB_ENV"
+          rm changelog.html changelog.md
+
+      - name: Update repo
+        uses: generoi/github-action-update-plugins@master
+        id: update
+        with:
+          download_url: "${{ fromJson(env.REMOTE_RESPONSE).url }}&user_id=${{ secrets.USER_ID }}&subscription_key=${{ secrets.LICENSE_KEY }}"
+          version: ${{ fromJson(env.REMOTE_RESPONSE).version }}
+          changelog: ${{ env.CHANGELOG }}
