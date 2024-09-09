@@ -53,7 +53,7 @@ runs:
         git clean -fxd
 
         if [ ! -z "${{ inputs.download_url }}" ]; then
-          curl "${{ inputs.download_url }}" > package.zip
+          curl -L "${{ inputs.download_url }}" > package.zip
         elif [ ! -z "${{ inputs.download_path }}" ]; then
           mv "${{ inputs.download_path }}" package.zip
         else
