@@ -70,6 +70,8 @@ jobs:
 
 ### EDD plugins
 
+_Note that a license need to be manually activated before it's available for downloading new versions. Happy to accept a PR that activates it automatically but for now it's a manual step._
+
 <details>
 <summary>Polylang PRO</summary>
 
