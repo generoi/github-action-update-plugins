@@ -6,7 +6,7 @@ on:
         required: true
         type: string
       changelog_extract:
-        required: false
+        default: "'/[0-9\\-]+ - version/ { if (p) { exit }; if ($4 == ver) { p=1; next } } p && NF' changelog.txt"
         type: string
     outputs:
       updated:
