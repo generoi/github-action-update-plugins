@@ -15,6 +15,9 @@ on:
         required: false
         type: string
         default: 'POST'
+      changelog_extract:
+        default: "'/^#### / { if (p) { exit }; if ($2 == ver) { p=1; next } } p && NF'"
+        type: string
     outputs:
       updated:
         description: "If the update didnt exist and was built"
@@ -92,7 +95,7 @@ jobs:
         run: |
           {
             echo 'CHANGELOG<<EOF'
-            awk -v ver=${{ fromJson(env.REMOTE_RESPONSE).new_version }} '/^#### / { if (p) { exit }; if ($2 == ver) { p=1; next } } p && NF' changelog.md 2>&1
+            awk -v ver=${{ fromJson(env.REMOTE_RESPONSE).new_version }} ${{ inputs.changelog_extract }} changelog.md 2>&1
             echo 'EOF'
           } >> "$GITHUB_ENV"
           rm changelog.html changelog.md
