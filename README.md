@@ -201,7 +201,6 @@ jobs:
       ACCESS_TOKEN_SECRET: ${{ secrets.WCCOM_ACCESS_TOKEN_SECRET }}
     with:
       slug: 'woocommerce-product-addons'
-      changelog_extract: "'/[0-9\\-]+ - version/ { if (p) { exit }; if ($4 == ver) { p=1; next } } p && NF' changelog.txt"
 ```
 
 </details>
@@ -223,7 +222,6 @@ jobs:
       ACCESS_TOKEN_SECRET: ${{ secrets.WCCOM_ACCESS_TOKEN_SECRET }}
     with:
       slug: 'woocommerce-gift-cards'
-      changelog_extract: "'/[0-9\\-]+ - version/ { if (p) { exit }; if ($4 == ver) { p=1; next } } p && NF' changelog.txt"
 ```
 
 </details>
@@ -245,7 +243,6 @@ jobs:
       ACCESS_TOKEN_SECRET: ${{ secrets.WCCOM_ACCESS_TOKEN_SECRET }}
     with:
       slug: 'woocommerce-request-a-quote'
-      changelog_extract: "'/[0-9\\-]+ - version/ { if (p) { exit }; if ($4 == ver) { p=1; next } } p && NF' changelog.txt"
 ```
 
 </details>
@@ -267,7 +264,6 @@ jobs:
       ACCESS_TOKEN_SECRET: ${{ secrets.WCCOM_ACCESS_TOKEN_SECRET }}
     with:
       slug: 'woocommerce-all-products-for-subscriptions'
-      changelog_extract: "'/[0-9\\-]+ - version/ { if (p) { exit }; if ($4 == ver) { p=1; next } } p && NF' changelog.txt"
 ```
 
 </details>
@@ -289,7 +285,6 @@ jobs:
       ACCESS_TOKEN_SECRET: ${{ secrets.WCCOM_ACCESS_TOKEN_SECRET }}
     with:
       slug: 'role-based-pricing-for-woocommerce'
-      changelog_extract: "'/[0-9\\-]+ - version/ { if (p) { exit }; if ($4 == ver) { p=1; next } } p && NF' changelog.txt"
 ```
 
 </details>
