@@ -273,7 +273,7 @@ jobs:
 </details>
 
 <details>
-<summary>Role Based Pricing for WooCommerce (woocommerce.com)</summary>
+<summary>Role Based Pricing for WooCommerce</summary>
 
 ```yml
 name: Build
@@ -409,6 +409,9 @@ jobs:
 <details>
 <summary>WC Paytrail (public repository)</summary>
 
+- [Public repository](https://github.com/generoi/wc-paytrail)
+- [Official site](https://markup.fi/products/woocommerce-paytrail/)
+
 ```yml
 name: Build
 on:
@@ -421,9 +424,6 @@ jobs:
     with:
       slug: 'woocommerce-paytrail'
 ```
-
-- [Public repository](https://github.com/generoi/wc-paytrail)
-- [Official site](https://markup.fi/products/woocommerce-paytrail/)
 
 </details>
 
@@ -482,6 +482,9 @@ jobs:
 <details>
 <summary>Kinsta Must-use Plugins (public repository)</summary>
 
+- [Public repository](https://github.com/generoi/kinsta-mu-plugins)
+- [Official site](https://kinsta.com/docs/wordpress-hosting/kinsta-mu-plugin/)
+
 ```yml
 name: Build
 on:
@@ -519,9 +522,6 @@ jobs:
           version: ${{ env.LATEST_VERSION }}
           strip_archive_folder: 'false'
 ```
-
-- [Public repository](https://github.com/generoi/kinsta-mu-plugins)
-- [Official site](https://kinsta.com/docs/wordpress-hosting/kinsta-mu-plugin/)
 
 </details>
 
