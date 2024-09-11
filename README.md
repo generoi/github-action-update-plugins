@@ -112,7 +112,7 @@ jobs:
       slug: 'Polylang for WooCommerce'
       source_url: 'https://example.com'
       endpoint_url: 'https://polylang.pro'
-      changelog_extract: |
+      changelog_extract: >-
         '/[0-9\\.]+ \\(.*\\)/ { if (p) { exit }; if ($1 == ver) { p=1; next } } p && NF'
 ```
 
