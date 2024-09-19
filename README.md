@@ -13,6 +13,8 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '5 4 * * *'
+permissions:
+  contents: write
 jobs:
   build:
     uses: generoi/github-action-update-plugins/.github/workflows/gravityforms-update.yml@master
@@ -35,6 +37,8 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '5 4 * * *'
+permissions:
+  contents: write
 jobs:
   build:
     uses: generoi/github-action-update-plugins/.github/workflows/facetwp-update.yml@master
@@ -56,6 +60,8 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '5 4 * * *'
+permissions:
+  contents: write
 jobs:
   build:
     uses: generoi/github-action-update-plugins/.github/workflows/facetwp-update.yml@master
@@ -81,6 +87,8 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '5 4 * * *'
+permissions:
+  contents: write
 jobs:
   build:
     uses: generoi/github-action-update-plugins/.github/workflows/edd-update.yml@master
@@ -103,6 +111,8 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '5 4 * * *'
+permissions:
+  contents: write
 jobs:
   build:
     uses: generoi/github-action-update-plugins/.github/workflows/edd-update.yml@master
@@ -127,6 +137,8 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '5 4 * * *'
+permissions:
+  contents: write
 jobs:
   build:
     uses: generoi/github-action-update-plugins/.github/workflows/edd-update.yml@master
@@ -152,6 +164,8 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '5 4 * * *'
+permissions:
+  contents: write
 jobs:
   build:
     uses: generoi/github-action-update-plugins/.github/workflows/acf-update.yml@master
@@ -174,6 +188,8 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '5 4 * * *'
+permissions:
+  contents: write
 jobs:
   build:
     uses: generoi/github-action-update-plugins/.github/workflows/wccom-update.yml@master
@@ -195,6 +211,8 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '5 4 * * *'
+permissions:
+  contents: write
 jobs:
   build:
     uses: generoi/github-action-update-plugins/.github/workflows/wccom-update.yml@master
@@ -216,6 +234,8 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '5 4 * * *'
+permissions:
+  contents: write
 jobs:
   build:
     uses: generoi/github-action-update-plugins/.github/workflows/wccom-update.yml@master
@@ -237,6 +257,8 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '5 4 * * *'
+permissions:
+  contents: write
 jobs:
   build:
     uses: generoi/github-action-update-plugins/.github/workflows/wccom-update.yml@master
@@ -258,6 +280,8 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '5 4 * * *'
+permissions:
+  contents: write
 jobs:
   build:
     uses: generoi/github-action-update-plugins/.github/workflows/wccom-update.yml@master
@@ -279,6 +303,8 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '5 4 * * *'
+permissions:
+  contents: write
 jobs:
   build:
     uses: generoi/github-action-update-plugins/.github/workflows/wccom-update.yml@master
@@ -303,6 +329,8 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '5 4 * * *'
+permissions:
+  contents: write
 jobs:
   build:
     uses: generoi/github-action-update-plugins/.github/workflows/wpml-update.yml@master
@@ -324,6 +352,8 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '5 4 * * *'
+permissions:
+  contents: write
 jobs:
   build:
     uses: generoi/github-action-update-plugins/.github/workflows/wpml-update.yml@master
@@ -347,6 +377,8 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '5 4 * * *'
+permissions:
+  contents: write
 jobs:
   build:
     uses: generoi/github-action-update-plugins/.github/workflows/markup-update.yml@master
@@ -368,6 +400,8 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '5 4 * * *'
+permissions:
+  contents: write
 jobs:
   build:
     uses: generoi/github-action-update-plugins/.github/workflows/markup-update.yml@master
@@ -391,6 +425,8 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '5 4 * * *'
+permissions:
+  contents: write
 jobs:
   build:
     uses: generoi/github-action-update-plugins/.github/workflows/markup-update.yml@master
@@ -415,6 +451,8 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '5 4 * * *'
+permissions:
+  contents: write
 jobs:
   build:
     uses: generoi/github-action-update-plugins/.github/workflows/markup-update.yml@master
@@ -436,6 +474,8 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '5 4 * * *'
+permissions:
+  contents: write
 jobs:
   build:
     name: Update plugin
@@ -488,6 +528,8 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '5 4 * * *'
+permissions:
+  contents: write
 jobs:
   build:
     name: Update plugin
@@ -531,6 +573,8 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '5 4 * * *'
+permissions:
+  contents: write
 jobs:
   build:
     name: Update plugin
@@ -580,6 +624,8 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '5 4 * * *'
+permissions:
+  contents: write
 jobs:
   build:
     uses: generoi/github-action-update-plugins/.github/workflows/acf-update.yml@master
