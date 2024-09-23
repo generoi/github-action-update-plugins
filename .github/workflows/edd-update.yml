@@ -50,18 +50,14 @@ jobs:
         if: ${{ inputs.method == 'POST' }}
         run: |
           {
-            echo 'REMOTE_RESPONSE<<EOF'
             curl -s -d "edd_action=get_version&license=${{ secrets.LICENSE_KEY }}&item_name=${{ inputs.slug }}&url=${{ inputs.source_url }}" ${{ inputs.endpoint_url }}
-            echo -e "\n"
-            echo 'EOF'
-          } >> "$GITHUB_ENV"
+          } > "/tmp/remote-response.json"
 
       # See https://easydigitaldownloads.com/docs/software-licensing-api/
       - name: Retrieve the license information (GET)
         if: ${{ inputs.method == 'GET' }}
         run: |
           {
-            echo 'REMOTE_RESPONSE<<EOF'
             curl -s \
               --get \
               --data-urlencode "edd_action=get_version" \
@@ -69,15 +65,23 @@ jobs:
               --data-urlencode "item_name=${{ inputs.slug }}" \
               --data-urlencode "url=${{ inputs.source_url }}" \
               "${{ inputs.endpoint_url }}"
+          } > "/tmp/remote-response.json"
+
+      - name: Read remote response
+        id: remote
+        run: |
+          {
+            echo 'REMOTE_RESPONSE<<EOF'
+            cat /tmp/remote-response.json
             echo -e "\n"
             echo 'EOF'
-          } >> "$GITHUB_ENV"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Read changelog
         run: |
           {
             php -r '
-              $json = json_decode(getenv("REMOTE_RESPONSE") ?: "");
+              $json = json_decode(file_get_contents("/tmp/remote-response.json") ?: "");
               echo @unserialize($json->sections ?? "")["changelog"] ?? "";
             '
           } > changelog.html
@@ -96,7 +100,7 @@ jobs:
         run: |
           {
             echo 'CHANGELOG<<EOF'
-            awk -v ver=${{ fromJson(env.REMOTE_RESPONSE).new_version }} ${{ inputs.changelog_extract }} changelog.md 2>&1
+            awk -v ver=${{ fromJson(steps.remote.outputs.REMOTE_RESPONSE).new_version }} ${{ inputs.changelog_extract }} changelog.md 2>&1
             echo 'EOF'
           } >> "$GITHUB_OUTPUT"
           rm changelog.html changelog.md
@@ -105,6 +109,6 @@ jobs:
         uses: generoi/github-action-update-plugins@master
         id: update
         with:
-          download_url: ${{ fromJson(env.REMOTE_RESPONSE).download_link }}
-          version: ${{ fromJson(env.REMOTE_RESPONSE).new_version }}
+          download_url: ${{ fromJson(steps.remote.outputs.REMOTE_RESPONSE).download_link }}
+          version: ${{ fromJson(steps.remote.outputs.REMOTE_RESPONSE).new_version }}
           changelog: ${{ steps.changelog.outputs.CHANGELOG }}
