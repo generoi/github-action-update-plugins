@@ -462,6 +462,30 @@ jobs:
 
 </details>
 
+### Beaver Builder
+
+<details>
+<summary>Beaver Builder</summary>
+
+```yml
+name: Build
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '5 4 * * *'
+permissions:
+  contents: write
+jobs:
+  build:
+    uses: generoi/github-action-update-plugins/.github/workflows/beaver-builder-update.yml@master
+    secrets:
+      LICENSE_KEY: ${{ secrets.LICENSE_KEY }}
+    with:
+      bb_package: bb-plugin-standard # or bb-plugin-agency, bb-plugin-developer, bb-plugin-pro, bb-theme, bb-theme-builder, bb-theme-child
+```
+
+</details>
+
 ### Manual package retrieval examples
 
 <details>
