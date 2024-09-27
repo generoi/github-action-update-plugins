@@ -29,6 +29,8 @@ jobs:
 <details>
 <summary>Gravity Forms Add-Ons</summary>
 
+Use the `slug` input to change which add-on you would like to pull.
+
 ```yml
 name: Build
 on:
