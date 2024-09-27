@@ -40,7 +40,7 @@ on:
 permissions:
   contents: write
 jobs:
-  update:
+  build:
     uses: generoi/github-action-update-plugins/.github/workflows/gravityforms-update.yml@master
     secrets:
       LICENSE_KEY: ${{ secrets.LICENSE_KEY }}
