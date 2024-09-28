@@ -26,6 +26,29 @@ jobs:
 
 </details>
 
+<details>
+<summary>Gravity Forms Add-Ons</summary>
+
+Use the `slug` input to change which add-on you would like to pull.
+
+```yml
+name: Build
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '5 4 * * *'
+permissions:
+  contents: write
+jobs:
+  build:
+    uses: generoi/github-action-update-plugins/.github/workflows/gravityforms-update.yml@master
+    secrets:
+      LICENSE_KEY: ${{ secrets.LICENSE_KEY }}
+    with:
+      slug: gravityformswebhooks
+```
+</details>
+
 ### FacetWP
 
 <details>
