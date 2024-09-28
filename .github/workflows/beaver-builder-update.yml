@@ -1,0 +1,70 @@
+name: Update Beaver Builder Plugin
+
+on:
+  workflow_call:
+    inputs:
+      bb_package:
+        description: |
+          the package within the bb echosystem you're using:
+          bb-plugin-agency, bb-plugin-developer, bb-plugin-pro, bb-plugin-standard, bb-theme, bb-theme-builder, bb-theme-child,
+        required: false
+        default: "bb-plugin-standard"
+        type: string
+    outputs:
+      updated:
+        description: "If the update didn't exist and was built"
+        value: ${{ jobs.build.outputs.updated }}
+      version:
+        description: "The updated version"
+        value: ${{ jobs.build.outputs.version }}
+    secrets:
+      LICENSE_KEY:
+        required: true
+
+jobs:
+  build:
+    name: Update plugin
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      updated: ${{ steps.update.outputs.updated }}
+      version: ${{ steps.update.outputs.version }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Retrieve the include URL
+        id: get-include-url
+        run: |
+          INCLUDE_URL_PATH=$(curl -s "https://composer.wpbeaverbuilder.com/${{ secrets.LICENSE_KEY }}/packages.json" | jq -r '.includes | to_entries[0].key')
+          EXTRACTED_TOKEN=$(echo $INCLUDE_URL_PATH | grep -oP '\$.*?\.json' | sed 's/^\$//' | sed 's/\.json$//')
+          echo "::set-output name=include_token::$EXTRACTED_TOKEN"
+          echo "INCLUDE_URL=https://composer.wpbeaverbuilder.com/${{ secrets.LICENSE_KEY }}/$INCLUDE_URL_PATH" >> $GITHUB_ENV
+
+      - name: Retrieve the package information
+        run: |
+          PACKAGE_INFO=$(curl -s -X GET '${{ env.INCLUDE_URL }}' | jq -r '.packages."beaver-builder/${{ inputs.bb_package }}" | to_entries | last')
+          echo "LATEST_VERSION=$(echo $PACKAGE_INFO | jq -r '.key')" >> $GITHUB_ENV
+          echo "DOWNLOAD_URL=$(echo $PACKAGE_INFO | jq -r '.value.dist.url')" >> $GITHUB_ENV
+
+      - name: Update repo
+        uses: generoi/github-action-update-plugins@master
+        id: update
+        with:
+          download_url: ${{ env.DOWNLOAD_URL }}
+          version: ${{ env.LATEST_VERSION }}
+          changelog_extract: |
+            awk -v ver='${{ env.LATEST_VERSION }} -' '
+              BEGIN { RS="<h4>"; FS="</h4>"; }
+              $1 ~ ver {
+                gsub(/<strong>([^<]+)<\/strong>/, "## &", $2);
+                gsub(/<ul>/, "", $2);
+                gsub(/<\/ul>/, "", $2);
+                gsub(/\t*<li>/, "* ", $2);
+                gsub(/<\/li>/, "", $2);
+                gsub(/<[^>]*>/, "", $2);
+                print $2;
+                exit;
+              }
+            ' changelog.txt
