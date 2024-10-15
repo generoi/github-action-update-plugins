@@ -72,21 +72,20 @@ runs:
       shell: bash
       run: |
         {
-          echo 'CHANGELOG<<EOF'
+          echo "v${{ inputs.version }}"
+          echo
           ${{ inputs.changelog_extract }}
-          echo -e "\n"
-          echo 'EOF'
-        } >> "$GITHUB_ENV"
+        } >| /tmp/commit-message
 
     - name: Retrieve changelog
       if: ${{ env.RUN_BUILD == 'true' && inputs.changelog != '' }}
       shell: bash
       run: |
         {
-          echo 'CHANGELOG<<EOF'
+          echo "v${{ inputs.version }}"
+          echo
           echo "${{ inputs.changelog }}"
-          echo 'EOF'
-        } >> "$GITHUB_ENV"
+        } >| /tmp/commit-message
 
     - name: Commit the changes and push them
       if: ${{ env.RUN_BUILD == 'true' }}
@@ -95,8 +94,8 @@ runs:
         git config --global user.name "${GITHUB_ACTOR}"
         git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
         git add .
-        git commit -m "v${{ inputs.version }}" -m "${{ env.CHANGELOG }}"
-        git tag --annotate ${{ inputs.version }} -m "v${{ inputs.version }}" -m "${{ env.CHANGELOG }}"
+        git commit --file /tmp/commit-message
+        git tag --annotate ${{ inputs.version }} --file /tmp/commit-message
         git push
         git push origin tag ${{ inputs.version }}
 

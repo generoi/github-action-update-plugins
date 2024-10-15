@@ -56,5 +56,5 @@ jobs:
         with:
           download_url: ${{ fromJson(env.REMOTE_RESPONSE).download_url }}
           version: ${{ fromJson(env.REMOTE_RESPONSE).version }}
-          changelog_extract: |
+          changelog_extract: |-
             awk -v ver=${{ fromJson(env.REMOTE_RESPONSE).version }} ${{ inputs.changelog_awk_extract }}

@@ -54,7 +54,7 @@ jobs:
         with:
           download_url: ${{ env.DOWNLOAD_URL }}
           version: ${{ env.LATEST_VERSION }}
-          changelog_extract: |
+          changelog_extract: |-
             awk -v ver='${{ env.LATEST_VERSION }} -' '
               BEGIN { RS="<h4>"; FS="</h4>"; }
               $1 ~ ver {
