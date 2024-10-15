@@ -485,6 +485,29 @@ jobs:
 
 </details>
 
+### MultilingualPress
+
+<details>
+<summary>MultilingualPress</summary>
+
+```yml
+name: Build
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '5 4 * * *'
+jobs:
+  build:
+    uses: generoi/github-action-update-plugins/.github/workflows/multilingualpress-update.yml@master
+    secrets:
+      LICENSE_KEY: ${{ secrets.LICENSE_KEY }}
+    with:
+      instance: '...'
+      product_id: '...'
+```
+
+</details>
+
 ### Beaver Builder
 
 <details>
