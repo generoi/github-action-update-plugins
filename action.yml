@@ -67,25 +67,25 @@ runs:
         git checkout -- composer.json .github
         git add .
 
-    - name: Extract changelog
-      if: ${{ env.RUN_BUILD == 'true' && inputs.changelog_extract != '' && inputs.changelog == '' }}
+    - name: Create commit message
       shell: bash
       run: |
         {
           echo "v${{ inputs.version }}"
           echo
-          ${{ inputs.changelog_extract }}
         } >| /tmp/commit-message
+
+    - name: Extract changelog
+      if: ${{ env.RUN_BUILD == 'true' && inputs.changelog_extract != '' && inputs.changelog == '' }}
+      shell: bash
+      run: |
+        ${{ inputs.changelog_extract }} >> /tmp/commit-message
 
     - name: Retrieve changelog
       if: ${{ env.RUN_BUILD == 'true' && inputs.changelog != '' }}
       shell: bash
       run: |
-        {
-          echo "v${{ inputs.version }}"
-          echo
-          echo "${{ inputs.changelog }}"
-        } >| /tmp/commit-message
+        echo "${{ inputs.changelog }}" >> /tmp/commit-message
 
     - name: Commit the changes and push them
       if: ${{ env.RUN_BUILD == 'true' }}
