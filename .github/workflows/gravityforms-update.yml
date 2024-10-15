@@ -56,5 +56,5 @@ jobs:
         with:
           download_url: ${{ fromJson(env.REMOTE_RESPONSE).download_url_latest }}
           version: ${{ fromJson(env.REMOTE_RESPONSE).version_latest }}
-          changelog_extract: |
+          changelog_extract: |-
             awk -v ver=${{ fromJson(env.REMOTE_RESPONSE).version_latest }} '/^### / { if (p) { exit }; if ($2 == ver) { p=1; next } } p && NF' change_log.txt 2>&1

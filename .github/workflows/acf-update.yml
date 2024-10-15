@@ -39,5 +39,5 @@ jobs:
         with:
           download_url: "https://connect.advancedcustomfields.com/v2/plugins/download?p=pro&k=${{ secrets.LICENSE_KEY }}"
           version: ${{ env.LATEST_VERSION }}
-          changelog_extract: |
+          changelog_extract: |-
             awk -v ver=${{ env.LATEST_VERSION }} '/^= / { if (p) { exit }; if ($2 == ver) { p=1; next } } p && NF' readme.txt 2>&1
