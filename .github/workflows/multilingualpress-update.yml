@@ -1,0 +1,66 @@
+name: MultilingualPress
+on:
+  workflow_call:
+    inputs:
+      slug:
+        type: string
+        default: 'multilingualpress'
+      version:
+        type: string
+        default: '1'
+      product_id:
+        required: true
+        type: string
+      instance:
+        required: true
+        type: string
+    outputs:
+      updated:
+        description: "If the update didnt exist and was built"
+        value: ${{ jobs.build.outputs.updated }}
+      version:
+        description: "The updated version"
+        value: ${{ jobs.build.outputs.version }}
+    secrets:
+      LICENSE_KEY:
+        required: false
+
+jobs:
+  build:
+    name: Update plugin
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      updated: ${{ steps.update.outputs.updated }}
+      version: ${{ steps.update.outputs.version }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Retrieve the license information
+        if:
+        run: |
+          {
+            echo 'REMOTE_RESPONSE<<EOF'
+            curl --get \
+              -d "wc-api=wc-am-api" \
+              -d "wc_am_action=update" \
+              -d "${{ inputs.slug && format('plugin_name={0}', inputs.slug) || '' }}" \
+              -d "${{ inputs.version && format('version={0}', inputs.version) || '' }}" \
+              -d "${{ secrets.LICENSE_KEY && format('api_key={0}', secrets.LICENSE_KEY) || '' }}" \
+              -d "${{ inputs.product_id && format('product_id={0}', inputs.product_id) || '' }}" \
+              -d "${{ inputs.instance && format('instance={0}', inputs.instance) || '' }}" \
+              'https://multilingualpress.org' | jq '.data.package'
+            echo -e "\n"
+            echo 'EOF'
+          } >> "$GITHUB_ENV"
+
+      - name: Update repo
+        uses: generoi/github-action-update-plugins@master
+        id: update
+        with:
+          download_url: ${{ fromJson(env.REMOTE_RESPONSE).package }}
+          version: ${{ fromJson(env.REMOTE_RESPONSE).new_version }}
+          changelog_extract: |
+            awk -v ver=${{ fromJson(env.REMOTE_RESPONSE).new_version }} '/^version / { if (p) { exit }; if ($2 == ver) { p=1; next } } p && NF' changelog.txt 2>&1
