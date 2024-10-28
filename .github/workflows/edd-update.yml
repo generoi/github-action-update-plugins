@@ -95,15 +95,10 @@ jobs:
             --output=changelog.md
             changelog.html
 
-      - name: Read changelog into environment variable
-        id: changelog
+      - name: Cleanup
         run: |
-          {
-            echo 'CHANGELOG<<EOF'
-            awk -v ver=${{ fromJson(steps.remote.outputs.REMOTE_RESPONSE).new_version }} ${{ inputs.changelog_extract }} changelog.md 2>&1
-            echo 'EOF'
-          } >> "$GITHUB_OUTPUT"
-          rm changelog.html changelog.md
+          mv changelog.md /tmp/changelog.md
+          rm changelog.html
 
       - name: Update repo
         uses: generoi/github-action-update-plugins@master
@@ -111,4 +106,5 @@ jobs:
         with:
           download_url: ${{ fromJson(steps.remote.outputs.REMOTE_RESPONSE).download_link }}
           version: ${{ fromJson(steps.remote.outputs.REMOTE_RESPONSE).new_version }}
-          changelog: ${{ steps.changelog.outputs.CHANGELOG }}
+          changelog_extract: |-
+            awk -v ver=${{ fromJson(steps.remote.outputs.REMOTE_RESPONSE).new_version }} ${{ inputs.changelog_extract }} /tmp/changelog.md 2>&1
