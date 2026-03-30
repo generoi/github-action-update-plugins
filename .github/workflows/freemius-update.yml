@@ -1,0 +1,173 @@
+name: Freemius
+on:
+  workflow_call:
+    inputs:
+      plugin_id:
+        required: true
+        type: string
+      site_url:
+        required: true
+        type: string
+      changelog_extract:
+        default: "'/^= / { if (p) { exit }; if ($2 == ver) { p=1; next } } p && NF'"
+        type: string
+    outputs:
+      updated:
+        description: "If the update didnt exist and was built"
+        value: ${{ jobs.build.outputs.updated }}
+      version:
+        description: "The updated version"
+        value: ${{ jobs.build.outputs.version }}
+    secrets:
+      FREEMIUS_USER_ID:
+        required: true
+      FREEMIUS_PUBLIC_KEY:
+        required: true
+      FREEMIUS_SECRET_KEY:
+        required: true
+      FREEMIUS_LICENSE_KEY:
+        required: true
+
+jobs:
+  build:
+    name: Update plugin
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      updated: ${{ steps.update.outputs.updated }}
+      version: ${{ steps.update.outputs.version }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+
+      - name: Fetch latest version and download URL
+        id: remote
+        env:
+          FREEMIUS_USER_ID: ${{ secrets.FREEMIUS_USER_ID }}
+          FREEMIUS_PUBLIC_KEY: ${{ secrets.FREEMIUS_PUBLIC_KEY }}
+          FREEMIUS_SECRET_KEY: ${{ secrets.FREEMIUS_SECRET_KEY }}
+          FREEMIUS_LICENSE_KEY: ${{ secrets.FREEMIUS_LICENSE_KEY }}
+          FREEMIUS_PLUGIN_ID: ${{ inputs.plugin_id }}
+          FREEMIUS_SITE_URL: ${{ inputs.site_url }}
+        run: |
+          php -r '
+            $user_id    = getenv("FREEMIUS_USER_ID");
+            $public_key = getenv("FREEMIUS_PUBLIC_KEY");
+            $secret_key = getenv("FREEMIUS_SECRET_KEY");
+            $license_key = getenv("FREEMIUS_LICENSE_KEY");
+            $plugin_id  = getenv("FREEMIUS_PLUGIN_ID");
+
+            function base64url_encode($input) {
+                return str_replace("=", "", strtr(base64_encode($input), "+/", "-_"));
+            }
+
+            function freemius_api($scope, $scope_id, $public, $secret, $path, $method = "GET", $body = null) {
+                $bases = [
+                    "user"    => "/users/$scope_id",
+                    "install" => "/installs/$scope_id",
+                ];
+                $resource = "/v1" . $bases[$scope] . "/" . ltrim($path, "/");
+
+                $date         = gmdate("r");
+                $content_md5  = "";
+                $content_type = "";
+                if (in_array($method, ["POST", "PUT"]) && $body) {
+                    $content_type = "application/json";
+                    $content_md5  = md5($body);
+                }
+
+                $string_to_sign = implode("\n", [$method, $content_md5, $content_type, $date, $resource]);
+                $sig  = base64url_encode(hash_hmac("sha256", $string_to_sign, $secret));
+                $auth = "FS $scope_id:$public:$sig";
+
+                $headers = ["Authorization: $auth", "Date: $date"];
+                if ($body) $headers[] = "Content-Type: application/json";
+
+                $ch = curl_init("https://api.freemius.com" . $resource);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
+                curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+                if ($body) curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+                curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+                $result = curl_exec($ch);
+                $code   = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close($ch);
+
+                return ["code" => $code, "body" => json_decode($result)];
+            }
+
+            function freemius_signed_url($scope_id, $public, $secret, $resource) {
+                $date = gmdate("r");
+                $string_to_sign = implode("\n", ["GET", "", "", $date, $resource]);
+                $sig  = base64url_encode(hash_hmac("sha256", $string_to_sign, $secret));
+                $auth = "FS $scope_id:$public:$sig";
+
+                return "https://api.freemius.com" . $resource .
+                    "?is_premium=true" .
+                    "&authorization=" . urlencode($auth) .
+                    "&auth_date=" . urlencode($date);
+            }
+
+            // 1. Get latest version from tags
+            $res = freemius_api("user", $user_id, $public_key, $secret_key, "plugins/$plugin_id/tags.json");
+            if ($res["code"] !== 200 || !isset($res["body"]->tags[0])) {
+                fwrite(STDERR, "Failed to fetch tags\n");
+                exit(1);
+            }
+            $latest = $res["body"]->tags[0];
+            $version = $latest->version;
+            echo "Latest version: $version\n";
+
+            // 2. Register an install to get download credentials
+            $install_data = json_encode([
+                "url"         => getenv("FREEMIUS_SITE_URL"),
+                "title"       => "CI",
+                "version"     => $version,
+                "license_key" => $license_key,
+                "is_premium"  => true,
+                "language"    => "en-US",
+            ]);
+
+            $res = freemius_api("user", $user_id, $public_key, $secret_key,
+                "plugins/$plugin_id/installs.json", "POST", $install_data);
+
+            if (!in_array($res["code"], [200, 201]) || !isset($res["body"]->id)) {
+                fwrite(STDERR, "Failed to register install: " . json_encode($res["body"]) . "\n");
+                exit(1);
+            }
+
+            $install_id = $res["body"]->id;
+            $install_pk = $res["body"]->public_key;
+            $install_sk = $res["body"]->secret_key;
+            echo "Install registered: $install_id\n";
+
+            // 3. Generate signed download URL
+            $download_url = freemius_signed_url(
+                $install_id, $install_pk, $install_sk,
+                "/v1/installs/$install_id/updates/latest.zip"
+            );
+
+            // 4. Write outputs
+            $output = getenv("GITHUB_OUTPUT");
+            file_put_contents($output, "version=$version\n", FILE_APPEND);
+            file_put_contents($output, "download_url=$download_url\n", FILE_APPEND);
+            file_put_contents($output, "install_id=$install_id\n", FILE_APPEND);
+          '
+
+      - name: Log response
+        run: |
+          echo "New version: ${{ steps.remote.outputs.version }}"
+
+      - name: Update repo
+        uses: generoi/github-action-update-plugins@master
+        id: update
+        with:
+          download_url: ${{ steps.remote.outputs.download_url }}
+          version: ${{ steps.remote.outputs.version }}
+          changelog_extract: |-
+            awk -v ver=${{ steps.remote.outputs.version }} ${{ inputs.changelog_extract }} readme.txt 2>&1
+
