@@ -122,9 +122,30 @@ jobs:
             $version = $latest->version;
             echo "Latest version: $version\n";
 
-            // 2. Register an install to get download credentials
+            // 2. Delete any pre-existing installs for this URL so we don't accumulate
+            //    one record per CI run. Freemius doesn't allow updating a stale install
+            //    without its (unstored) credentials, so we delete and recreate.
+            $site_url = getenv("FREEMIUS_SITE_URL");
+            $res = freemius_api("user", $user_id, $public_key, $secret_key,
+                "plugins/$plugin_id/installs.json?search=" . urlencode($site_url));
+            if ($res["code"] === 200 && !empty($res["body"]->installs)) {
+                $needle = rtrim(preg_replace("#^https?://#", "", $site_url), "/");
+                foreach ($res["body"]->installs as $i) {
+                    $haystack = rtrim(preg_replace("#^https?://#", "", $i->url ?? ""), "/");
+                    if ($haystack !== $needle) continue;
+                    $del = freemius_api("user", $user_id, $public_key, $secret_key,
+                        "plugins/$plugin_id/installs/{$i->id}.json", "DELETE");
+                    if (!in_array($del["code"], [200, 204])) {
+                        fwrite(STDERR, "Warning: failed to delete stale install {$i->id}: " . json_encode($del["body"]) . "\n");
+                    } else {
+                        echo "Deleted stale install: {$i->id}\n";
+                    }
+                }
+            }
+
+            // 3. Register an install to get download credentials
             $install_data = json_encode([
-                "url"         => getenv("FREEMIUS_SITE_URL"),
+                "url"         => $site_url,
                 "title"       => "CI",
                 "version"     => $version,
                 "license_key" => $license_key,
@@ -145,13 +166,13 @@ jobs:
             $install_sk = $res["body"]->secret_key;
             echo "Install registered: $install_id\n";
 
-            // 3. Generate signed download URL
+            // 4. Generate signed download URL
             $download_url = freemius_signed_url(
                 $install_id, $install_pk, $install_sk,
                 "/v1/installs/$install_id/updates/latest.zip"
             );
 
-            // 4. Write outputs
+            // 5. Write outputs
             $output = getenv("GITHUB_OUTPUT");
             file_put_contents($output, "version=$version\n", FILE_APPEND);
             file_put_contents($output, "download_url=$download_url\n", FILE_APPEND);
