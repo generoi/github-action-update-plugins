@@ -21,10 +21,17 @@ runs:
       id: wccom-package
       shell: bash
       run: |
+        # Capture the package JSON separately so a script failure surfaces its
+        # stderr and a clean exit code, instead of leaving an unterminated
+        # heredoc in $GITHUB_OUTPUT ("Matching delimiter not found 'EOF'").
+        if ! response=$(php "$GITHUB_ACTION_PATH/../../scripts/wccom-get-package.php"); then
+          echo "::error::Failed to fetch package from WooCommerce.com (see error above)."
+          exit 1
+        fi
+
         {
           echo 'REMOTE_RESPONSE<<EOF'
-          php $GITHUB_ACTION_PATH/../../scripts/wccom-get-package.php
-          echo -e "\n"
+          echo "$response"
           echo 'EOF'
         } >> "$GITHUB_OUTPUT"
       env:
