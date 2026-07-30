@@ -109,7 +109,7 @@ runs:
     # Release workflow not triggered from other workflows
     - name: Publish release
       if: ${{ env.RUN_BUILD == 'true' }}
-      uses: ghalactic/github-release-from-tag@v5
+      uses: ghalactic/github-release-from-tag@v6
 
     - name: Set output status
       id: completed-job
