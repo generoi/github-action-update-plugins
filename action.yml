@@ -43,7 +43,14 @@ runs:
     - name: Install requirements
       if: env.RUN_BUILD == 'true'
       shell: bash
-      run: sudo apt-get install -y libarchive-tools
+      run: |
+        if command -v bsdtar >/dev/null; then
+          exit 0
+        fi
+        # Refresh the package index first, the runner image ships a stale one
+        # which points at package versions already removed from the mirrors.
+        sudo apt-get update
+        sudo apt-get install -y libarchive-tools
 
     - name: Download and extract the package
       if: env.RUN_BUILD == 'true'
