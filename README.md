@@ -557,7 +557,7 @@ jobs:
       version: ${{ steps.update.outputs.version }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Retrieve the latest version number
         run: |
@@ -611,7 +611,7 @@ jobs:
       version: ${{ steps.update.outputs.version }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Retrieve the latest version number
         run: |
@@ -656,7 +656,7 @@ jobs:
       version: ${{ steps.update.outputs.version }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Retrieve the latest version number
         run: |
