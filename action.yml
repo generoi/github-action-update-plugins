@@ -15,6 +15,13 @@ inputs:
     description: "Remove the parent folder of the downloaded archive (defaults to true)"
     default: 'true'
     required: false
+  heartbeat_days:
+    description: >
+      Push an empty keepalive commit when the repository is public and its last
+      commit is older than this many days, to stop GitHub auto-disabling the
+      scheduled workflow (see the Heartbeat step). Set to 0 to disable.
+    default: '45'
+    required: false
 
 outputs:
   updated:
@@ -110,6 +117,57 @@ runs:
     - name: Publish release
       if: ${{ env.RUN_BUILD == 'true' }}
       uses: ghalactic/github-release-from-tag@v5
+
+    # GitHub auto-disables scheduled workflows in PUBLIC repos after 60 days with
+    # no repository activity. Workflow *runs* do not count as activity — only
+    # pushes do. For a mirror repo the only pushes are version bumps, so the
+    # clock is reset solely by upstream shipping a release. That inverts into a
+    # trap: the plugins that update least often are exactly the ones GitHub
+    # switches off, and then they are never checked again.
+    #
+    # Observed on generoi/wc-paytrail: last commit 2026-01-21, last scheduled run
+    # 2026-03-22 — exactly 60 days later, despite the cron firing daily in
+    # between. generoi/woocommerce-gateway-verifone sat dead for ~15 months.
+    #
+    # So when there is no new version, keep the clock alive with an empty commit.
+    # Private repos are exempt from the rule (several are 690 days idle and still
+    # active), so skip them and keep their history clean.
+    - name: Heartbeat
+      if: ${{ env.RUN_BUILD == 'false' && inputs.heartbeat_days != '0' }}
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        HEARTBEAT_DAYS: ${{ inputs.heartbeat_days }}
+      run: |
+        set -euo pipefail
+
+        read -r private archived < <(
+          gh api "repos/$GITHUB_REPOSITORY" --jq '[.private, .archived] | @tsv'
+        )
+        if [ "$private" != "false" ] || [ "$archived" != "false" ]; then
+          echo "Repo is private or archived — exempt from the 60-day rule, skipping."
+          exit 0
+        fi
+
+        last=$(git log -1 --format=%ct)
+        age=$(( ( $(date +%s) - last ) / 86400 ))
+        echo "Last commit was ${age}d ago; heartbeat threshold is ${HEARTBEAT_DAYS}d."
+        if [ "$age" -lt "$HEARTBEAT_DAYS" ]; then
+          echo "Within threshold, nothing to do."
+          exit 0
+        fi
+
+        git config --global user.name "${GITHUB_ACTOR}"
+        git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+        git commit --allow-empty -m "chore: keepalive
+
+        No new upstream version in ${age} days. Empty commit to reset GitHub's
+        60-day inactivity timer, which would otherwise auto-disable the scheduled
+        workflow in this public repository and silently stop update checks."
+
+        # Explicit refspec: the checkout may not have left us on a named branch.
+        git push origin "HEAD:${GITHUB_REF_NAME}"
+        echo "::notice title=Keepalive::Pushed an empty commit (last real change was ${age}d ago) to keep the scheduled workflow from being auto-disabled."
 
     - name: Set output status
       id: completed-job
