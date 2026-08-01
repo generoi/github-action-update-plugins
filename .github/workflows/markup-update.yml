@@ -10,7 +10,16 @@ on:
         default: ''
         type: string
       changelog_awk_extract:
-        default: |
+        # `|-`, not `|`. The action interpolates this into
+        #   ${{ inputs.changelog_extract }} >> /tmp/commit-message
+        # so a trailing newline here pushes the redirect onto its own line:
+        #   awk … CHANGELOG.txt
+        #    >> /tmp/commit-message
+        # which is two statements. The awk then writes to stdout — visible in the
+        # run log, so the changelog looks like it worked — while the bare redirect
+        # appends nothing, and the commit message, the annotated tag built from it
+        # and therefore the release body all stay empty.
+        default: |-
           '/[0-9\.]+ \(.*\)/ { if (p) { exit }; if ($1 == ver) { p=1; next } } p && NF' CHANGELOG.txt
         type: string
     outputs:
