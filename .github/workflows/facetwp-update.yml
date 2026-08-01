@@ -55,13 +55,43 @@ jobs:
             --output=changelog.md
             changelog.html
 
+      - name: Normalise version headings
+        run: |
+          # Same rules as edd-update.yml: vendors write version markers in
+          # whatever style their readme uses, pandoc passes through anything that
+          # is not an HTML heading, and the `#### ` extractor below then matches
+          # nothing — leaving an empty release body with no error anywhere.
+          #
+          # A no-op when the headings are already `#### `, which is the case for
+          # the four facetwp-* mirrors that currently publish notes correctly.
+          sed -E -i \
+            -e 's/^= *v?([0-9][0-9.]*[0-9])[^=]*=[\\]?[[:space:]]*$/#### \1/' \
+            -e 's/^Version +v?([0-9][0-9.]*[0-9])([^0-9].*)?$/#### \1/' \
+            -e 's/^-[[:space:]]+v?([0-9][0-9.]*[0-9])[[:space:]]*$/#### \1/' \
+            -e 's/^#{2,3} +v?([0-9][0-9.]*[0-9])[[:space:]]*$/#### \1/' \
+            changelog.md
+
       - name: Read changelog into environment variable
         run: |
+          # Printed because this workflow is the one place in the fleet where a
+          # blank release body cannot be diagnosed after the fact: unlike the
+          # other updaters, nothing here reads a changelog committed in the repo,
+          # so there is no way to reproduce the payload offline. facetwp-relevanssi
+          # has published empty notes for every release and the cause is still
+          # unknown for exactly this reason.
+          echo "Changelog (converted, normalised):"
+          cat changelog.md
+
           {
             echo 'CHANGELOG<<EOF'
             awk -v ver=${{ fromJson(env.REMOTE_RESPONSE).version }} '/^#### / { if (p) { exit }; if ($2 == ver) { p=1; next } } p && NF' changelog.md 2>&1
             echo 'EOF'
           } >> "$GITHUB_ENV"
+
+          if ! grep -q '^#### ' changelog.md; then
+            echo "::warning title=No version headings in the changelog::Nothing matches '#### <version>' after normalisation, so this release will have blank notes. The output above shows what the endpoint returned."
+          fi
+
           rm changelog.html changelog.md
 
       - name: Update repo
