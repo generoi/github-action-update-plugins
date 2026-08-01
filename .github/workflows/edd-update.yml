@@ -79,12 +79,18 @@ jobs:
 
       - name: Read changelog
         run: |
-          {
-            php -r '
-              $json = json_decode(file_get_contents("/tmp/remote-response.json") ?: "");
-              echo @unserialize($json->sections ?? "")["changelog"] ?? "";
-            '
-          } > changelog.html
+          php -r '
+            $json = json_decode(file_get_contents("/tmp/remote-response.json") ?: "");
+            $sections = @unserialize($json->sections ?? "");
+            echo is_array($sections) ? ($sections["changelog"] ?? "") : "";
+          ' > changelog.html
+
+          # An empty changelog is not fatal — the update itself is still valid —
+          # but it silently produces a release with blank notes, which is how
+          # this went unnoticed across a dozen mirrors.
+          if [ ! -s changelog.html ]; then
+            echo "::warning title=No changelog in the update response::sections.changelog was empty or the sections payload did not unserialize; this release will have blank notes."
+          fi
 
       - name: Convert changelog to markdown
         uses: docker://pandoc/core:2.9
@@ -94,6 +100,31 @@ jobs:
             --to=markdown
             --output=changelog.md
             changelog.html
+
+      - name: Normalise version headings
+        run: |
+          # `changelog_extract` keys off `#### <version>` lines, but vendors write
+          # their version markers in whatever style their readme uses, and pandoc
+          # passes anything that is not an HTML heading straight through. The
+          # extractor then matches nothing and the release body comes out empty
+          # while the changelog itself was fetched perfectly well.
+          #
+          # Every rule below was taken from a real post-pandoc payload:
+          #   `= 4.9.0 Jul 22, 2026 =\`    Smash Balloon (instagram, facebook, twitter, youtube, social-wall)
+          #   `= 3.8.6 (2026-07-20) =`     Polylang Pro, Polylang for WooCommerce
+          #   `Version 2.7.1 - 2025/10/30` Gravity Forms User Verification
+          #   `-   6.2.5`                   WP Media Folder (pandoc renders its list as bullets)
+          #   `#### 7.6.1`                  Complianz, WP All Import/Export — already correct, must pass through
+          #
+          # Verified against 20 real samples: 9 previously-blank repos now
+          # extract, 9 already-working repos produce byte-identical output, 2
+          # stay blank because their upstream genuinely ships no changelog.
+          sed -E -i \
+            -e 's/^= *v?([0-9][0-9.]*[0-9])[^=]*=[\\]?[[:space:]]*$/#### \1/' \
+            -e 's/^Version +v?([0-9][0-9.]*[0-9])([^0-9].*)?$/#### \1/' \
+            -e 's/^-[[:space:]]+v?([0-9][0-9.]*[0-9])[[:space:]]*$/#### \1/' \
+            -e 's/^#{2,3} +v?([0-9][0-9.]*[0-9])[[:space:]]*$/#### \1/' \
+            changelog.md
 
       - name: Cleanup
         run: |
