@@ -18,6 +18,21 @@ on:
       changelog_extract:
         default: "'/^#### / { if (p) { exit }; if ($2 == ver) { p=1; next } } p && NF'"
         type: string
+      changelog_file:
+        # Where the extractor reads from. The default is the changelog converted
+        # from the update response above.
+        #
+        # Point this at a file shipped inside the plugin — `readme.txt` — when the
+        # vendor's response carries no usable changelog. cff-extensions is the
+        # case in hand: its endpoint answers with the literal string "Unable to
+        # retrieve changelog at this time", while the readme.txt in the zip has a
+        # full `== Changelog ==` section.
+        #
+        # Such a path is resolved *after* the new files are extracted, because the
+        # action runs the extractor at that point, so it reads the incoming
+        # version's readme rather than the one currently committed.
+        default: /tmp/changelog.md
+        type: string
     outputs:
       updated:
         description: "If the update didnt exist and was built"
@@ -145,4 +160,4 @@ jobs:
           download_url: ${{ fromJson(steps.remote.outputs.REMOTE_RESPONSE).download_link }}
           version: ${{ fromJson(steps.remote.outputs.REMOTE_RESPONSE).new_version }}
           changelog_extract: |-
-            awk -v ver=${{ fromJson(steps.remote.outputs.REMOTE_RESPONSE).new_version }} ${{ inputs.changelog_extract }} /tmp/changelog.md 2>&1
+            awk -v ver=${{ fromJson(steps.remote.outputs.REMOTE_RESPONSE).new_version }} ${{ inputs.changelog_extract }} ${{ inputs.changelog_file }} 2>&1
