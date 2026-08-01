@@ -9,6 +9,16 @@ on:
       host:
         required: true
         type: string
+      changelog_url:
+        # A page to take the changelog from, when the update response carries
+        # none. facetwp-relevanssi is the case in hand: its response has no
+        # usable changelog and every release has been blank, while the addon's
+        # help-center page lists the full history.
+        #
+        # Left empty, the response is used exactly as before.
+        required: false
+        default: ''
+        type: string
     outputs:
       updated:
         description: "If the update didnt exist and was built"
@@ -43,10 +53,12 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: Store changelog HTML as a file
+        if: ${{ inputs.changelog_url == '' }}
         run: |
           echo "${{ fromJson(env.REMOTE_RESPONSE).sections.changelog }}" > changelog.html
 
       - name: Convert changelog to markdown
+        if: ${{ inputs.changelog_url == '' }}
         uses: docker://pandoc/core:2.9
         with:
           args: >-
@@ -54,6 +66,27 @@ jobs:
             --to=markdown
             --output=changelog.md
             changelog.html
+
+      - name: Build the changelog from a page instead
+        if: ${{ inputs.changelog_url != '' }}
+        run: |
+          set -uo pipefail
+          curl -sSL --max-time 60 --retry 3 --retry-delay 5 \
+            -o changelog.html "${{ inputs.changelog_url }}"
+
+          # Converted here rather than by the shared pandoc step above, so the
+          # flags a full web page needs cannot change the output of the mirrors
+          # that use the response and already publish notes correctly:
+          #
+          #   --atx-headers            pandoc otherwise writes the version as a
+          #                            setext heading underlined with dashes,
+          #                            which no `^#### ` extractor can see
+          #   markdown_strict-raw_html drops the page markup, so the notes are
+          #                            plain text instead of carrying <span> tags
+          #                            into the release body
+          docker run --rm -v "$PWD:/w" -w /w pandoc/core:2.9 \
+            --from=html --to=markdown_strict-raw_html --atx-headers \
+            --output=changelog.md changelog.html
 
       - name: Normalise version headings
         run: |
@@ -92,7 +125,8 @@ jobs:
             echo "::warning title=No version headings in the changelog::Nothing matches '#### <version>' after normalisation, so this release will have blank notes. The output above shows what the endpoint returned."
           fi
 
-          rm changelog.html changelog.md
+          # -f because only one of the two paths above creates changelog.html.
+          rm -f changelog.html changelog.md
 
       - name: Update repo
         uses: generoi/github-action-update-plugins@master
