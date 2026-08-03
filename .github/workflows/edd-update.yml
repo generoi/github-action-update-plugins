@@ -61,11 +61,20 @@ jobs:
         uses: shivammathur/setup-php@v2
 
       # See https://easydigitaldownloads.com/docs/software-licensing-api/
+      #
+      # Retries because these are third-party endpoints and they do fall over:
+      # on 2026-08-03 complianz.io returned a non-JSON body and relevanssi.com
+      # refused connections for 132s, within a minute of each other, and both
+      # were fine again on the next run. Without --connect-timeout, curl's
+      # default is ~2min of hanging before it gives up.
       - name: Retrieve the license information (POST)
         if: ${{ inputs.method == 'POST' }}
         run: |
           {
-            curl -s -d "edd_action=get_version&license=${{ secrets.LICENSE_KEY }}&item_name=${{ inputs.slug }}&url=${{ inputs.source_url }}" ${{ inputs.endpoint_url }}
+            curl -s \
+              --retry 3 --retry-delay 5 --retry-all-errors \
+              --connect-timeout 15 --max-time 120 \
+              -d "edd_action=get_version&license=${{ secrets.LICENSE_KEY }}&item_name=${{ inputs.slug }}&url=${{ inputs.source_url }}" ${{ inputs.endpoint_url }}
           } > "/tmp/remote-response.json"
 
       # See https://easydigitaldownloads.com/docs/software-licensing-api/
@@ -74,6 +83,8 @@ jobs:
         run: |
           {
             curl -s \
+              --retry 3 --retry-delay 5 --retry-all-errors \
+              --connect-timeout 15 --max-time 120 \
               --get \
               --data-urlencode "edd_action=get_version" \
               --data-urlencode "license=${{ secrets.LICENSE_KEY }}" \
@@ -81,6 +92,48 @@ jobs:
               --data-urlencode "url=${{ inputs.source_url }}" \
               "${{ inputs.endpoint_url }}"
           } > "/tmp/remote-response.json"
+
+      # Everything downstream runs the response through `fromJson()` in a workflow
+      # expression. That is evaluated by the Actions template engine, not by a
+      # shell, so a malformed body does not fail *here* — it fails later as:
+      #
+      #   The template is not valid. generoi/github-action-update-plugins/
+      #   .github/workflows/edd-update.yml@master (Line: 150, Col: 14):
+      #   Unexpected character encountered while parsing value: e.
+      #
+      # which reads as "someone broke the shared workflow for all ~20 callers"
+      # rather than "the vendor had a bad minute". That is what complianz.io did
+      # on 2026-08-03. Fail here instead, where we can say what actually happened.
+      #
+      # `new_version` is checked too, not just well-formedness: EDD answers an
+      # invalid or expired licence with perfectly valid JSON that simply has no
+      # version in it, which would otherwise sail through and tag a release with
+      # an empty version string.
+      - name: Validate the update response
+        run: |
+          body=/tmp/remote-response.json
+
+          fail() {
+            # Actions masks registered secrets, so the licence key in an echoed
+            # request is redacted. Still cap the excerpt — some vendors return an
+            # entire HTML error page.
+            echo "::error title=Bad update response from ${{ inputs.endpoint_url }}::$1 First 200 bytes of the response follow; see the step log for more."
+            echo "--- response excerpt ---"
+            head -c 200 "$body"
+            echo
+            echo "--- end (total $(wc -c < "$body") bytes) ---"
+            exit 1
+          }
+
+          [ -s "$body" ] || fail "The endpoint returned an empty body, so there is no version to compare against."
+
+          jq -e . "$body" >/dev/null 2>&1 \
+            || fail "The endpoint returned a body that is not valid JSON — usually an error page or a maintenance notice rather than the licensing API."
+
+          version=$(jq -r '.new_version // empty' "$body")
+          [ -n "$version" ] || fail "The response is valid JSON but carries no \`new_version\`, which is how this API reports an invalid or expired licence for '${{ inputs.slug }}'."
+
+          echo "Update response OK — ${{ inputs.slug }} reports version ${version}."
 
       - name: Read remote response
         id: remote
