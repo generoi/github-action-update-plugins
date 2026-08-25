@@ -34,6 +34,30 @@ outputs:
 runs:
   using: 'composite'
   steps:
+    # An empty `version` is not a theoretical input. When a caller's vendor call
+    # fails, the workflow expression feeding this input evaluates to nothing and
+    # the action is handed "". That used to sail straight through: the tag check
+    # below asks for `refs/tags/` with nothing after it, never matches, sets
+    # RUN_BUILD=true, and the checkout is wiped by `git rm -rf .` before the
+    # missing download URL is noticed. Nine gravityforms mirrors did exactly
+    # that on 2026-08-25 when gravityapi.com went down for a few minutes.
+    #
+    # The download inputs are checked here too, for the same reason: the "no
+    # package" case is worth catching before anything destructive runs, not
+    # after.
+    - name: Validate inputs
+      shell: bash
+      run: |
+        if [ -z "${{ inputs.version }}" ]; then
+          echo "::error title=Missing version input::The caller passed an empty version, which normally means its vendor update-check failed or returned an unusable body. Refusing to continue - there is nothing to tag."
+          exit 1
+        fi
+
+        if [ -z "${{ inputs.download_url }}" ] && [ -z "${{ inputs.download_path }}" ]; then
+          echo "::error title=Missing package input::Neither download_url nor download_path was set for version ${{ inputs.version }}, so there is no package to extract."
+          exit 1
+        fi
+
     - name: Fetch tags
       shell: bash
       run: git fetch --prune --unshallow --tags
@@ -68,11 +92,8 @@ runs:
 
         if [ ! -z "${{ inputs.download_url }}" ]; then
           curl -L '${{ inputs.download_url }}' > package.zip
-        elif [ ! -z "${{ inputs.download_path }}" ]; then
-          mv "${{ inputs.download_path }}" package.zip
         else
-          echo "Missing package/download_url input"
-          exit 1
+          mv "${{ inputs.download_path }}" package.zip
         fi
 
         bsdtar --strip-components=${{ inputs.strip_archive_folder == 'true' && 1 || 0 }} -xvf package.zip
