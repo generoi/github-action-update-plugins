@@ -33,19 +33,98 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
 
+      # gravityapi.com is a third-party endpoint and it does fall over. On
+      # 2026-08-25 all nine gravityapi-backed mirrors failed inside the same
+      # window (04:19:13-04:21:49 UTC), each hanging for exactly 60s - PHP's
+      # default_socket_timeout - before file_get_contents gave up and returned
+      # false. The endpoint was healthy again by morning.
+      #
+      # curl rather than file_get_contents so the call can be retried: the
+      # timers reset per attempt, so this waits out roughly seven minutes of
+      # vendor downtime instead of the single 60s shot we had before.
+      #
+      # No --fail: a 4xx body is more useful in the log than a bare exit code,
+      # and the validation step below turns it into a specific error. Transient
+      # HTTP statuses (408, 429, 5xx) are retried by curl regardless.
       - name: Retrieve the license information
+        env:
+          LICENSE_KEY: ${{ secrets.LICENSE_KEY }}
+        run: |
+          if ! curl -sS \
+            --retry 5 --retry-delay 20 --retry-all-errors \
+            --connect-timeout 15 --max-time 60 \
+            --get \
+            --data-urlencode "op=get_plugin" \
+            --data-urlencode "slug=${{ inputs.slug }}" \
+            --data-urlencode "key=$LICENSE_KEY" \
+            "https://gravityapi.com/wp-content/plugins/gravitymanager/api.php" \
+            > /tmp/remote-response.txt
+          then
+            echo "::error title=Could not reach gravityapi.com::The licensing endpoint did not answer for '${{ inputs.slug }}' after 6 attempts over several minutes. This is a vendor outage, not a repository problem - re-run the job once the endpoint is back."
+            exit 1
+          fi
+
+      # Everything downstream runs the response through `fromJson()` in a
+      # workflow expression, which the Actions template engine evaluates rather
+      # than a shell, so a bad body does not fail where it is fetched. Before
+      # this step, a failed fetch became `REMOTE_RESPONSE: false`, which then
+      # surfaced two steps later as:
+      #
+      #   Missing package/download_url input
+      #
+      # *after* the "Download and extract" step had already run `git rm -rf .`
+      # on the checkout. That reads as a packaging bug in this shared workflow
+      # rather than "the vendor had a bad minute". Fail here instead, where we
+      # can say what actually happened.
+      #
+      # `download_url_latest` is checked too, not just well-formedness: this API
+      # answers an invalid or expired licence with a perfectly good serialized
+      # array carrying the real `version_latest` and an *empty*
+      # `download_url_latest` (verified against the live endpoint with a bogus
+      # key). Without the check that reads as a healthy response right up until
+      # the checkout has already been wiped.
+      - name: Validate the update response
+        run: |
+          body=/tmp/remote-response.txt
+
+          fail() {
+            # Actions masks registered secrets, so the licence key in an echoed
+            # request is redacted. Still cap the excerpt - the endpoint returns
+            # an entire HTML error page when it is unhappy.
+            echo "::error title=Bad update response from gravityapi.com::$1 First 200 bytes of the response follow; see the step log for more."
+            echo "--- response excerpt ---"
+            head -c 200 "$body"
+            echo
+            echo "--- end (total $(wc -c < "$body") bytes) ---"
+            exit 1
+          }
+
+          [ -s "$body" ] || fail "The endpoint returned an empty body, so there is no version to compare against."
+
+          status=0
+          php -r '
+            $data = @unserialize(file_get_contents($argv[1]));
+            if (!is_array($data)) { exit(2); }
+            if (($data["version_latest"] ?? "") === "") { exit(3); }
+            if (($data["download_url_latest"] ?? "") === "") { exit(4); }
+            file_put_contents("/tmp/remote-response.json", json_encode($data));
+          ' "$body" || status=$?
+
+          case "$status" in
+            0) ;;
+            2) fail "The endpoint returned a body that is not a PHP-serialized array - usually an error page or a maintenance notice rather than the licensing API." ;;
+            3) fail "The response unserializes but carries no \`version_latest\` for '${{ inputs.slug }}' - check the slug is one this API knows about." ;;
+            4) fail "The response carries a version but an empty \`download_url_latest\`, which is how this API reports an invalid or expired licence for '${{ inputs.slug }}'." ;;
+            *) fail "Could not read the response (php exited $status)." ;;
+          esac
+
+          echo "Update response OK - ${{ inputs.slug }} reports version $(jq -r .version_latest /tmp/remote-response.json)."
+
+      - name: Read remote response
         run: |
           {
             echo 'REMOTE_RESPONSE<<EOF'
-            php -r '
-              echo json_encode(
-                unserialize(
-                  file_get_contents(
-                    "https://gravityapi.com/wp-content/plugins/gravitymanager/api.php?op=get_plugin&slug=${{ inputs.slug }}&key=${{ secrets.LICENSE_KEY }}"
-                  )
-                )
-              );
-            '
+            cat /tmp/remote-response.json
             echo -e "\n"
             echo 'EOF'
           } >> "$GITHUB_ENV"
