@@ -140,12 +140,21 @@ runs:
       run: |
         echo "${{ inputs.changelog }}" >> /tmp/commit-message
 
+    # Authored as the bot, not as GITHUB_ACTOR. On a scheduled run that variable
+    # is whoever last touched the workflow, so a nightly mirror bump across 71
+    # repositories lands under the name of someone who was asleep — and a commit
+    # that replaces the whole plugin tree looks, in a blame, like they did it by
+    # hand. The push already happens as github-actions[bot] via GITHUB_TOKEN;
+    # this only makes the authorship agree with it.
+    #
+    # No numeric id prefix: GitHub links this address to the bot account as-is,
+    # which matches morning-reports and github-actions/composer-update.
     - name: Commit the changes and push them
       if: ${{ env.RUN_BUILD == 'true' }}
       shell: bash
       run: |
-        git config --global user.name "${GITHUB_ACTOR}"
-        git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
         git add .
         git commit --file /tmp/commit-message
         git tag --annotate ${{ inputs.version }} --file /tmp/commit-message
@@ -196,8 +205,8 @@ runs:
           exit 0
         fi
 
-        git config --global user.name "${GITHUB_ACTOR}"
-        git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
         git commit --allow-empty -m "chore: keepalive
 
         No new upstream version in ${age} days. Empty commit to reset GitHub's
