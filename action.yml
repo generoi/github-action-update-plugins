@@ -110,11 +110,29 @@ runs:
           echo
         } >| /tmp/commit-message
 
+    # The extractor is written by the caller against whatever shape that
+    # vendor's changelog happens to have, so it rots quietly: the fetch
+    # succeeds, the extractor matches nothing, and the only symptom is a
+    # release whose notes are blank. polylang-wc shipped four such releases
+    # (2.2.1 through 2.2.4) before anyone looked — its extractor keyed off
+    # `= 2.2.4 (2026-07-20) =` headings that the EDD workflow's "Normalise
+    # version headings" step had since rewritten to `#### 2.2.4`.
+    #
+    # So extract to a file and say something when it comes out empty. This
+    # also catches the trailing-newline trap described in the relevanssi
+    # caller, where the redirect is split onto its own line and the extractor
+    # prints to stdout instead — visible in the log, absent from the release.
     - name: Extract changelog
       if: ${{ env.RUN_BUILD == 'true' && inputs.changelog_extract != '' && inputs.changelog == '' }}
       shell: bash
       run: |
-        ${{ inputs.changelog_extract }} >> /tmp/commit-message
+        ${{ inputs.changelog_extract }} > /tmp/extracted-changelog
+
+        if [ -s /tmp/extracted-changelog ]; then
+          cat /tmp/extracted-changelog >> /tmp/commit-message
+        else
+          echo "::warning title=Changelog extractor produced nothing::The changelog was fetched but \`changelog_extract\` matched no lines for version ${{ inputs.version }}, so this release will have blank notes. The extractor has most likely drifted from the changelog's current heading format - compare it against the 'Log response' step output above."
+        fi
 
     - name: Retrieve changelog
       if: ${{ env.RUN_BUILD == 'true' && inputs.changelog != '' }}
