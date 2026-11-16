@@ -35,11 +35,13 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      # Keep only url and version: the full entry embeds the changelog HTML, and an env
+      # var over 128 KiB (MAX_ARG_STRLEN) makes every later step fail to spawn bash.
       - name: Retrieve the package information
         run: |
           {
             echo 'REMOTE_RESPONSE<<EOF'
-            curl -s -X GET 'http://d2salfytceyqoe.cloudfront.net/wpml33-products.json' | jq '.downloads.plugins."${{ inputs.slug }}"'
+            curl -s -X GET 'http://d2salfytceyqoe.cloudfront.net/wpml33-products.json' | jq --compact-output '.downloads.plugins."${{ inputs.slug }}" | {url, version}'
             echo 'EOF'
           } >> "$GITHUB_ENV"
 
