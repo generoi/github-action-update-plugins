@@ -43,19 +43,22 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      # Keep only package and version in the env var: the full entry embeds the
+      # changelog HTML, and an env var over 128 KiB (MAX_ARG_STRLEN) makes every
+      # later step fail to spawn bash. The changelog goes to a file instead.
       - name: Retrieve the license information
         run: |
+          curl -s -d "action=check_plugins&license=${{ secrets.LICENSE_KEY }}&slugs=${{ inputs.slug }}&host=${{ inputs.host }}" "https://api.facetwp.com" \
+            | jq '.slugs["${{ inputs.slug }}"]' > response.json
           {
             echo 'REMOTE_RESPONSE<<EOF'
-            curl -s -d "action=check_plugins&license=${{ secrets.LICENSE_KEY }}&slugs=${{ inputs.slug }}&host=${{ inputs.host }}" "https://api.facetwp.com" | jq '.slugs["${{ inputs.slug }}"]'
-            echo -e "\n"
+            jq --compact-output '{package, version}' response.json
             echo 'EOF'
           } >> "$GITHUB_ENV"
 
       - name: Store changelog HTML as a file
         if: ${{ inputs.changelog_url == '' }}
-        run: |
-          echo "${{ fromJson(env.REMOTE_RESPONSE).sections.changelog }}" > changelog.html
+        run: jq --raw-output '.sections.changelog' response.json > changelog.html
 
       - name: Convert changelog to markdown
         if: ${{ inputs.changelog_url == '' }}
@@ -126,7 +129,7 @@ jobs:
           fi
 
           # -f because only one of the two paths above creates changelog.html.
-          rm -f changelog.html changelog.md
+          rm -f response.json changelog.html changelog.md
 
       - name: Update repo
         uses: gppackagist/github-action-update-plugins@main
