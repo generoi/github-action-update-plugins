@@ -160,12 +160,13 @@ jobs:
             echo "::warning title=No changelog in the update response::sections.changelog was empty or the sections payload did not unserialize; this release will have blank notes."
           fi
 
+      # -smart: with it, pandoc escapes every straight quote as \' or \" in the notes.
       - name: Convert changelog to markdown
         uses: docker://pandoc/core:2.9@sha256:a98725012a960ec77310acef038b57c82b9375bf65ae761d93146448c6e53a31
         with:
           args: >-
             --from=html
-            --to=markdown
+            --to=markdown-smart
             --output=changelog.md
             changelog.html
 

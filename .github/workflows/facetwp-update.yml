@@ -60,13 +60,14 @@ jobs:
         if: ${{ inputs.changelog_url == '' }}
         run: jq --raw-output '.sections.changelog' response.json > changelog.html
 
+      # -smart: with it, pandoc escapes every straight quote as \' or \" in the notes.
       - name: Convert changelog to markdown
         if: ${{ inputs.changelog_url == '' }}
         uses: docker://pandoc/core:2.9@sha256:a98725012a960ec77310acef038b57c82b9375bf65ae761d93146448c6e53a31
         with:
           args: >-
             --from=html
-            --to=markdown
+            --to=markdown-smart
             --output=changelog.md
             changelog.html
 
