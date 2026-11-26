@@ -157,11 +157,15 @@ runs:
           echo "::warning title=Changelog extractor produced nothing::The changelog was fetched but \`changelog_extract\` matched no lines for version ${{ inputs.version }}, so this release will have blank notes. The extractor has most likely drifted from the changelog's current heading format - compare it against the 'Log response' step output above."
         fi
 
+    # Through env, not interpolated into the script: release notes carry quotes
+    # and backticks, which bash would otherwise parse and run as commands.
     - name: Retrieve changelog
       if: ${{ env.RUN_BUILD == 'true' && inputs.changelog != '' }}
       shell: bash
+      env:
+        CHANGELOG: ${{ inputs.changelog }}
       run: |
-        echo "${{ inputs.changelog }}" >> /tmp/commit-message
+        printf '%s\n' "$CHANGELOG" >> /tmp/commit-message
 
     # Authored as the bot, not as GITHUB_ACTOR. On a scheduled run that variable
     # is whoever last touched the workflow, so a nightly mirror bump across 71
